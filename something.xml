@@ -1,0 +1,74 @@
+<noise>
+   
+	<!--<clamp upper-bound="32">
+		<perlin frequency="0.2" octaves="3" persistence=".5" scale="0.1" lacunarity="2.0" seed="1234"/>
+		<y-module/>
+	</clamp> -->
+   
+   <!--
+	<addition>
+		<multiply>
+			<multiply>
+				<y-module/>
+				<invert>
+					<const value="128"/>
+				</invert>
+			</multiply>
+			
+			<const value="2"/>
+		</multiply>
+		
+		<const value="-1"/>
+	</addition>
+	-->
+	<!-- <blend> -->
+	<!--<addition>
+		<multiply>
+			<multiply>
+				<y-module/>
+				<inverse-mul>
+					<const value="4"/>
+				</inverse-mul>
+			</multiply>
+			
+			<const value="2"/>
+		</multiply>
+		
+		<const value="-1"/>
+	</addition>-->
+	<!--<perlin  frequency="1.45" octaves="2" persistence=".5" scale="0.5" lacunarity="2.0" seed="124"/>
+	<perlin  frequency="0.45" octaves="2" persistence=".5" scale="0.5" lacunarity="2.0" seed="124"/>
+	<perlin  frequency="1.101" octaves="3" persistence=".5" scale="0.9" lacunarity="2.0" seed="234"/>
+	</blend> -->
+
+
+	<!--<select upper-bound="0.9" edge-falloff="0.3" lower-bound="0.1">
+	<blend>
+		<addition>
+			<multiply>
+				<multiply>
+					<y-module/>
+					<inverse-mul>
+						<const value="3"/>
+					</inverse-mul>
+				</multiply>
+				
+				<const value="3"/>
+			</multiply>
+			
+			<const value="-1"/>
+		</addition>
+		<perlin  frequency="0.94" octaves="3" persistence=".5" scale="0.71" lacunarity="2.0" seed="324"/>
+		<const value="0.1"/> 
+		
+	</blend>
+	<ridged-multi frequency="0.89" octaves="3" persistence=".5" scale="0.8" lacunarity="1.9" seed="32424"/>
+	<perlin  frequency="0.49" octaves="3" persistence=".5" scale="0.6" lacunarity="2.0" seed="334"/>
+	</select> -->
+<perlin  frequency="0.005" octaves="6" persistence=".5" scale="2.21" lacunarity="2.0" seed="324"/>
+
+	
+    <!--
+    http://www.melior-ls.com/nppdoxy/classnoisepp_1_1_module.html for more modules to implement!
+    -->
+</noise>

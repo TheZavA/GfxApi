@@ -1,0 +1,318 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="noisepp">
+      <UniqueIdentifier>{f5575bab-4ea4-4efa-8138-e2e22e4d7665}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="voxel">
+      <UniqueIdentifier>{2935c9f2-2464-4ae7-9f89-9f3996025580}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GfxApi">
+      <UniqueIdentifier>{528eb6ad-5afe-487a-9576-437747bd8337}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="xmlnoise">
+      <UniqueIdentifier>{801ea56a-4ed6-40e1-ab12-c41e627ded2a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="tinyxml2">
+      <UniqueIdentifier>{16c96457-45e7-4e73-87e9-5faaa77a950a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="cubelib">
+      <UniqueIdentifier>{5c4e508d-8ead-4ea7-a99b-05b3d5b2fef8}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="noisepp\threadpp\Thread.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\threadpp\ThreadCondition.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\threadpp\ThreadImplementation.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\threadpp\ThreadMutex.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\threadpp\ThreadPlatform.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\threadpp\ThreadPrerequisites.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\threadpp\ThreadStdHeaders.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\utils\NoiseBuilders.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\utils\NoiseColourValue.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\utils\NoiseEndianUtils.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\utils\NoiseGradientRenderer.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\utils\NoiseImage.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\utils\NoiseInStream.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\utils\NoiseJobQueue.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\utils\NoiseOutStream.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\utils\NoiseReader.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\utils\NoiseSystem.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\utils\NoiseUtils.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\utils\NoiseWriter.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\Noise.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseAbsolute.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseAddition.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseBillow.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseBlend.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseCheckerboard.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseClamp.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseConfig.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseConstant.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseCurve.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseExceptions.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseExponent.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseGenerator.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseInverseMul.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseInvert.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseMath.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseMaximum.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseMinimum.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseModule.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseMultiply.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoisePerlin.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoisePipeline.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoisePipelineJobs.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoisePlatform.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoisePower.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoisePrerequisites.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseRidgedMulti.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseScaleBias.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseScalePoint.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseSelect.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseStdHeaders.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseTerrace.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseThreadedPipeline.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseTranslatePoint.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseTurbulence.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseVectorTable.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseVoronoi.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="noisepp\core\NoiseY.h">
+      <Filter>noisepp</Filter>
+    </ClInclude>
+    <ClInclude Include="voxel\TVolume2d.h">
+      <Filter>voxel</Filter>
+    </ClInclude>
+    <ClInclude Include="voxel\TVolume3d.h">
+      <Filter>voxel</Filter>
+    </ClInclude>
+    <ClInclude Include="voxel\TVolumePool.h">
+      <Filter>voxel</Filter>
+    </ClInclude>
+    <ClInclude Include="xmlnoise\xml_noise_decls.hpp">
+      <Filter>xmlnoise</Filter>
+    </ClInclude>
+    <ClInclude Include="xmlnoise\xml_noise_error.hpp">
+      <Filter>xmlnoise</Filter>
+    </ClInclude>
+    <ClInclude Include="xmlnoise\xml_noise_handlers.hpp">
+      <Filter>xmlnoise</Filter>
+    </ClInclude>
+    <ClInclude Include="xmlnoise\xml_noise2d.hpp">
+      <Filter>xmlnoise</Filter>
+    </ClInclude>
+    <ClInclude Include="xmlnoise\xml_noise2d_handlers.hpp">
+      <Filter>xmlnoise</Filter>
+    </ClInclude>
+    <ClInclude Include="xmlnoise\xml_noise3d.hpp">
+      <Filter>xmlnoise</Filter>
+    </ClInclude>
+    <ClInclude Include="xmlnoise\xml_noise3d_handlers.hpp">
+      <Filter>xmlnoise</Filter>
+    </ClInclude>
+    <ClInclude Include="tinyxml2\tinyxml2.h">
+      <Filter>tinyxml2</Filter>
+    </ClInclude>
+    <ClInclude Include="MainClass.h" />
+    <ClInclude Include="Chunk.h" />
+    <ClInclude Include="ChunkManager.h" />
+    <ClInclude Include="McTable.h">
+      <Filter>voxel</Filter>
+    </ClInclude>
+    <ClInclude Include="cubelib\cube.hpp">
+      <Filter>cubelib</Filter>
+    </ClInclude>
+    <ClInclude Include="cubelib\cube.inl.hpp">
+      <Filter>cubelib</Filter>
+    </ClInclude>
+    <ClInclude Include="cubelib\logic_utility.hpp">
+      <Filter>cubelib</Filter>
+    </ClInclude>
+    <ClInclude Include="TOctree.h">
+      <Filter>voxel</Filter>
+    </ClInclude>
+    <ClInclude Include="TQueueLocked.h" />
+    <ClInclude Include="GfxApi.h">
+      <Filter>GfxApi</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="noisepp\utils\NoiseBuilders.cpp">
+      <Filter>noisepp</Filter>
+    </ClCompile>
+    <ClCompile Include="noisepp\utils\NoiseColourValue.cpp">
+      <Filter>noisepp</Filter>
+    </ClCompile>
+    <ClCompile Include="noisepp\utils\NoiseEndianUtils.cpp">
+      <Filter>noisepp</Filter>
+    </ClCompile>
+    <ClCompile Include="noisepp\utils\NoiseGradientRenderer.cpp">
+      <Filter>noisepp</Filter>
+    </ClCompile>
+    <ClCompile Include="noisepp\utils\NoiseImage.cpp">
+      <Filter>noisepp</Filter>
+    </ClCompile>
+    <ClCompile Include="noisepp\utils\NoiseInStream.cpp">
+      <Filter>noisepp</Filter>
+    </ClCompile>
+    <ClCompile Include="noisepp\utils\NoiseJobQueue.cpp">
+      <Filter>noisepp</Filter>
+    </ClCompile>
+    <ClCompile Include="noisepp\utils\NoiseModules.cpp">
+      <Filter>noisepp</Filter>
+    </ClCompile>
+    <ClCompile Include="noisepp\utils\NoiseOutStream.cpp">
+      <Filter>noisepp</Filter>
+    </ClCompile>
+    <ClCompile Include="noisepp\utils\NoiseReader.cpp">
+      <Filter>noisepp</Filter>
+    </ClCompile>
+    <ClCompile Include="noisepp\utils\NoiseSystem.cpp">
+      <Filter>noisepp</Filter>
+    </ClCompile>
+    <ClCompile Include="noisepp\utils\NoiseWriter.cpp">
+      <Filter>noisepp</Filter>
+    </ClCompile>
+    <ClCompile Include="xmlnoise\xml_noise_handlers.cpp">
+      <Filter>xmlnoise</Filter>
+    </ClCompile>
+    <ClCompile Include="xmlnoise\xml_noise2d.cpp">
+      <Filter>xmlnoise</Filter>
+    </ClCompile>
+    <ClCompile Include="xmlnoise\xml_noise2d_handlers.cpp">
+      <Filter>xmlnoise</Filter>
+    </ClCompile>
+    <ClCompile Include="xmlnoise\xml_noise3d.cpp">
+      <Filter>xmlnoise</Filter>
+    </ClCompile>
+    <ClCompile Include="xmlnoise\xml_noise3d_handlers.cpp">
+      <Filter>xmlnoise</Filter>
+    </ClCompile>
+    <ClCompile Include="tinyxml2\tinyxml2.cpp">
+      <Filter>tinyxml2</Filter>
+    </ClCompile>
+    <ClCompile Include="MainClass.cpp" />
+    <ClCompile Include="Chunk.cpp" />
+    <ClCompile Include="ChunkManager.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="GfxApi.cpp">
+      <Filter>GfxApi</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

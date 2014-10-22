@@ -12,7 +12,9 @@
 
 MainClass::MainClass() :
     m_exiting(false),
-    m_windowTitle("GfxApi")
+    m_windowTitle("GfxApi"),
+    m_bNoCamUpdate(false),
+    m_bHideTerrain(false)
 {
 
 }
@@ -255,7 +257,11 @@ void MainClass::mainLoop()
 
 void MainClass::handleInput(float deltaTime)
 {
-    const float moveSpeed = 0.01; //units per second
+    float moveSpeed = 0.01; //units per second
+    if(m_pInput->keyPressed(GLFW_KEY_LEFT_SHIFT))
+    {
+        moveSpeed = 0.5;
+    }
     if(m_pInput->keyPressed(GLFW_KEY_S))
     {
         m_camera.pos += deltaTime * moveSpeed * -m_camera.front;
@@ -282,6 +288,29 @@ void MainClass::handleInput(float deltaTime)
     {
         m_camera.pos += deltaTime * moveSpeed * m_camera.up;
     }
+
+    if(m_pInput->keyPressed(GLFW_KEY_F))
+    {
+        m_cameraFrozen = m_camera;
+        m_bNoCamUpdate = true;
+    }
+
+    if(m_pInput->keyPressed(GLFW_KEY_G))
+    {
+        m_bNoCamUpdate = false;
+    }
+
+    if(m_pInput->keyPressed(GLFW_KEY_H))
+    {
+        m_bHideTerrain = true;
+    }
+
+    if(m_pInput->keyPressed(GLFW_KEY_J))
+    {
+        m_bHideTerrain = false;
+    }
+
+
 }
     
 void MainClass::onTick()
@@ -290,7 +319,14 @@ void MainClass::onTick()
     double deltaTime = Clock::MillisecondsSinceD(m_lastTick);
     m_lastTick = Clock::Tick();
 
-    m_pChunkMgr->updateLoDTree(m_camera);
+    if(m_bNoCamUpdate)
+    {
+        m_pChunkMgr->updateLoDTree(m_cameraFrozen);
+    }
+    else
+    {
+        m_pChunkMgr->updateLoDTree(m_camera);
+    }
 
     if (glfwWindowShouldClose(m_pWindow))
     {
@@ -309,39 +345,56 @@ void MainClass::onTick()
     
     // Make the window's context current 
     glfwMakeContextCurrent(m_pWindow);
-    m_graphics.clear(true, true, true, 0, 0.5, 0.9);
 
-
-    // render all meshes
-    for(auto& node : m_meshList)
+    if(!m_bHideTerrain)
     {
-     
-        node->m_pMesh->applyVAO();
-        node->m_pMesh->m_sp->use();
-
-        int worldLocation = node->m_pMesh->m_sp->getUniformLocation("world");
-        assert(worldLocation != -1);
-        int worldViewProjLocation = node->m_pMesh->m_sp->getUniformLocation("worldViewProj");
-        assert(worldViewProjLocation != -1);
-            
-        float4x4 world = node->m_xForm;
-        node->m_pMesh->m_sp->setFloat4x4(worldLocation, world);
-        node->m_pMesh->m_sp->setFloat4x4(worldViewProjLocation, m_camera.ViewProjMatrix() );
-            
-        node->m_pMesh->draw();
-
+        m_graphics.clear(true, true, true, 0, 0.5, 0.9);
+    }
+    else
+    {
+        m_graphics.clear(true, true, true, 0, 0, 0);
     }
 
-    //m_pChunkMgr->renderBounds(m_camera);
+
+    //// render all meshes
+    //for(auto& node : m_meshList)
+    //{
+    // 
+    //    node->m_pMesh->applyVAO();
+    //    if(m_pChunkMgr->m_pLastShader != node->m_pMesh->m_sp)
+    //    {
+    //        node->m_pMesh->m_sp->use();
+    //        m_pChunkMgr->m_pLastShader = node->m_pMesh->m_sp;
+    //    }
+
+    //    int worldLocation = node->m_pMesh->m_sp->getUniformLocation("world");
+    //    assert(worldLocation != -1);
+    //    int worldViewProjLocation = node->m_pMesh->m_sp->getUniformLocation("worldViewProj");
+    //    assert(worldViewProjLocation != -1);
+    //        
+    //    float4x4 world = node->m_xForm;
+    //    node->m_pMesh->m_sp->setFloat4x4(worldLocation, world);
+    //    node->m_pMesh->m_sp->setFloat4x4(worldViewProjLocation, m_camera.ViewProjMatrix() );
+    //        
+    //    node->m_pMesh->draw();
+
+    //}
+
+    m_pChunkMgr->renderBounds(m_camera);
+ 
+
+    //for(auto& chunk : m_pChunkMgr->m_visibles)
+    //{
+    //    if(!chunk->m_pMesh)
+    //    {
+    //        chunk->generateMesh();
+    //    }
+    //}
 
     for(auto& chunk : m_pChunkMgr->m_visibles)
     {
-        if(!chunk->m_pMesh)
-        {
-            chunk->generateMesh();
-        }
 
-        if(chunk->m_pMesh)
+        if(chunk->m_pMesh && !m_bHideTerrain)
         {
             if(m_camera.Intersects(chunk->m_bounds))
             {
@@ -353,7 +406,12 @@ void MainClass::onTick()
                                                                                           float3(scale, scale, scale), 
                                                                                           float3(0, 0, 0));
                 node->m_pMesh->applyVAO();
-                //node->m_pMesh->m_sp->use();
+
+                if(m_pChunkMgr->m_pLastShader != node->m_pMesh->m_sp)
+                {
+                    node->m_pMesh->m_sp->use();
+                    m_pChunkMgr->m_pLastShader = node->m_pMesh->m_sp;
+                }
 
                 int worldLocation = node->m_pMesh->m_sp->getUniformLocation("world");
                 assert(worldLocation != -1);
@@ -366,11 +424,15 @@ void MainClass::onTick()
             
                 node->m_pMesh->draw();
             }
-
-
         }
+        
     }
 
+    GfxApi::Mesh::unbindVAO();
+
+    
+
+    
     
 
     // Swap front and back buffers 

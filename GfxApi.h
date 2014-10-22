@@ -331,6 +331,8 @@ public:
     void generateVAO(int startVertexOffset=0, bool check_index_bounds=false);
     void linkShaders();
     void applyVAO();
+
+    static void unbindVAO();
         
     void draw(int numIndices=-1, int startIndexOffset=0);
 

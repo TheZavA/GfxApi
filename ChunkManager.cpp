@@ -20,14 +20,40 @@
 ChunkManager::ChunkManager(void)
 {
 
+    boost::shared_ptr<GfxApi::Shader> vs = boost::make_shared<GfxApi::Shader>(GfxApi::ShaderType::VertexShader);
+    vs->LoadFromFile(GfxApi::ShaderType::VertexShader, "shader/chunk.vs");
+
+    boost::shared_ptr<GfxApi::Shader> ps = boost::make_shared<GfxApi::Shader>(GfxApi::ShaderType::PixelShader);
+    ps->LoadFromFile(GfxApi::ShaderType::PixelShader, "shader/chunk.ps");
+
+    auto& sp = boost::make_shared<GfxApi::ShaderProgram>();
+    sp->attach(*vs);
+    sp->attach(*ps);
+
+    boost::shared_ptr<GfxApi::Shader> vs1 = boost::make_shared<GfxApi::Shader>(GfxApi::ShaderType::VertexShader);
+    vs1->LoadFromFile(GfxApi::ShaderType::VertexShader, "shader/line.vs");
+
+    boost::shared_ptr<GfxApi::Shader> ps1 = boost::make_shared<GfxApi::Shader>(GfxApi::ShaderType::PixelShader);
+    ps1->LoadFromFile(GfxApi::ShaderType::PixelShader, "shader/line.ps");
+
+    auto& sp1 = boost::make_shared<GfxApi::ShaderProgram>();
+    sp1->attach(*vs1);
+    sp1->attach(*ps1);
+
+    m_shaders.push_back(sp);
+    m_shaders.push_back(sp1);
+
     std::thread chunkLoadThread(&ChunkManager::chunkLoaderThread, this);
 	chunkLoadThread.detach();
 
-    AABB unitBox(vec(-1000,-1000,-1000), vec(1000,1000,1000));
+    AABB rootBounds(vec(WORLD_BOUNDS_MIN_XZ, WORLD_BOUNDS_MIN_Y, WORLD_BOUNDS_MIN_XZ), 
+                    vec(WORLD_BOUNDS_MAX_XZ, WORLD_BOUNDS_MAX_Y, WORLD_BOUNDS_MAX_XZ));
 
-    boost::shared_ptr<Chunk> pChunk = boost::make_shared<Chunk>(unitBox, 1, this);
+    boost::shared_ptr<Chunk> pChunk = boost::make_shared<Chunk>(rootBounds, 1, this);
 
+    pChunk->generateBaseMap();
     pChunk->generateTerrain();
+    pChunk->generateVertices();
     pChunk->generateMesh();
 
     m_pOctTree.reset(new ChunkTree(nullptr, nullptr, pChunk, 1, cube::corner_t::get(0, 0, 0)));
@@ -38,7 +64,7 @@ ChunkManager::ChunkManager(void)
 
     for(auto& corner : cube::corner_t::all())
     {
-        initTree1(m_pOctTree->getChild(corner));
+        initTree(m_pOctTree->getChild(corner));
         m_visibles.insert(m_pOctTree->getChild(corner).getValue());
     }
 
@@ -59,24 +85,25 @@ void ChunkManager::chunkLoaderThread()
     
         did_some_work = false;
 
-        std::size_t max_chunks_low_volumes_to_create_per_frame = 1;
+        std::size_t max_chunks_per_frame = 1;
 
-        for (std::size_t i = 0; i < max_chunks_low_volumes_to_create_per_frame; ++i)
+        for (std::size_t i = 0; i < max_chunks_per_frame; ++i)
         {
-            boost::shared_ptr<Chunk> chunk = m_chunkGeneratorQueue.pop();
+            boost::shared_ptr<Chunk> chunk = m_chunkNoiseGeneratorQueue.pop();
             if(!chunk)
             {
                 break;
             }
 
+            chunk->generateBaseMap();
             chunk->generateTerrain();
+            chunk->generateVertices();
             
 
             *chunk->m_workInProgress = false;
 
             did_some_work = true;
         }
-
 
         if (!did_some_work)
         {
@@ -106,6 +133,7 @@ void ChunkManager::updateVisibles(ChunkTree& pTree)
         {
             if(!pTree.getValue()->m_pMesh)
             {
+
                 pTree.getValue()->generateMesh();
             }
             m_visibles.insert(pTree.getValue());
@@ -137,7 +165,7 @@ void ChunkManager::initTree(ChunkTree&  pChild)
 
     *pChunk->m_workInProgress = true;
 
-    m_chunkGeneratorQueue.push(pChild.getValueCopy());
+    m_chunkNoiseGeneratorQueue.push(pChild.getValueCopy());
 
 }
 
@@ -161,6 +189,7 @@ void ChunkManager::initTree1(ChunkTree&  pChild)
     pChunk->m_pTree = &pChild;
 
     pChunk->generateTerrain();
+    pChunk->generateVertices();
     pChunk->generateMesh();
 
 }
@@ -174,10 +203,10 @@ bool ChunkManager::isAcceptablePixelError(float3& cameraPos, ChunkTree& tree)
   
     //World length of highest LOD node
     //float x_0 = 128.0;
-    float x_0 = 8;
+    float x_0 = 64;
 
     /////All nodes within this distance will surely be rendered
-    float f_0 = x_0 * 0.9;
+    float f_0 = x_0 * 0.8;
   
     /////Total nodes
     float t = math::Pow(2 * (f_0 / x_0), 3);
@@ -230,49 +259,59 @@ void ChunkManager::renderBounds(const Frustum& camera)
 {
 
     ///Draw the octree frame
-
+    std::vector<float> vertexData;
     for(auto& visible : m_visibles)
     {
         const AABB& box = visible->m_bounds;
 
-        float3 colour( box.Contains(camera.pos) ? 1.0 : .2, 4 / 7.0, 1.0);
+        float3 colour;
+        if(box.Contains(camera.pos))
+        {
+            colour = float3(1.0 , 0, 0);
+        }
+        else
+        {
+            colour = float3(0.2, (float)(visible->m_pTree->getLevel()) / (float)MAX_LOD_LEVEL, 0.7);
+        }
+
+        
         //ColourValue colour = ColourValue::Green;
 
-        std::vector<float> vertices;
+
 
         BOOST_FOREACH(const cube::edge_t& edge, cube::edge_t::all())
         {
-            BOOST_FOREACH(const cube::corner_t& corner, cube::corner_t::all())
+            BOOST_FOREACH(const cube::corner_t& corner, edge.corners())
             {
                 float3 corner_position = box.CornerPoint(corner.index());
                 float3 relative_corner = corner_position - box.CenterPoint();
-                relative_corner *= .99;
-                float3 in_corner = box.CenterPoint() - relative_corner;
+                relative_corner *= .999;
+                float3 in_corner = box.CenterPoint() + relative_corner;
 
-                vertices.push_back(in_corner.x);
-                vertices.push_back(in_corner.y);
-                vertices.push_back(in_corner.z);
-              /*  vertices.push_back(colour.x);
-                vertices.push_back(colour.y);
-                vertices.push_back(colour.z);*/
-                vertices.push_back(1);
-                vertices.push_back(1);
-                vertices.push_back(1);
+                vertexData.push_back(in_corner.x);
+                vertexData.push_back(in_corner.y);
+                vertexData.push_back(in_corner.z);
+                vertexData.push_back(colour.x);
+                vertexData.push_back(colour.y);
+                vertexData.push_back(colour.z);
 
             }
         }
 
+
+    }
+
         GfxApi::VertexDeclaration decl;
         decl.add(GfxApi::VertexElement(GfxApi::VertexDataSemantic::VCOORD, GfxApi::VertexDataType::FLOAT, 3, "vertex_position"));
-        decl.add(GfxApi::VertexElement(GfxApi::VertexDataSemantic::NORMAL, GfxApi::VertexDataType::FLOAT, 3, "vertex_normal"));
+        decl.add(GfxApi::VertexElement(GfxApi::VertexDataSemantic::COLOR, GfxApi::VertexDataType::FLOAT, 3, "vertex_color"));
 
-        boost::shared_ptr<GfxApi::VertexBuffer> pVertexBuffer = boost::make_shared<GfxApi::VertexBuffer>(vertices.size()/6, decl);
+        boost::shared_ptr<GfxApi::VertexBuffer> pVertexBuffer = boost::make_shared<GfxApi::VertexBuffer>(vertexData.size()/6, decl);
 
         float * vbPtr = reinterpret_cast<float*>(pVertexBuffer->getCpuPtr());
         
 
         uint32_t offset = 0;
-        for( auto& vertexInf : vertices)
+        for( auto& vertexInf : vertexData)
         {
 
             vbPtr[offset] = vertexInf;
@@ -283,30 +322,27 @@ void ChunkManager::renderBounds(const Frustum& camera)
         pVertexBuffer->allocateGpu();
         pVertexBuffer->updateToGpu();
 
-        auto mesh = boost::make_shared<GfxApi::Mesh>(GfxApi::PrimitiveType::TriangleList);
+        auto mesh = boost::make_shared<GfxApi::Mesh>(GfxApi::PrimitiveType::LineList);
 
         mesh->m_vbs.push_back(pVertexBuffer);
 
-        boost::shared_ptr<GfxApi::Shader> vs = boost::make_shared<GfxApi::Shader>(GfxApi::ShaderType::VertexShader);
-        vs->LoadFromFile(GfxApi::ShaderType::VertexShader, "shader/chunk.vs");
+        mesh->m_sp = m_shaders[1];
 
-        boost::shared_ptr<GfxApi::Shader> ps = boost::make_shared<GfxApi::Shader>(GfxApi::ShaderType::PixelShader);
-        ps->LoadFromFile(GfxApi::ShaderType::PixelShader, "shader/chunk.ps");
-
-        mesh->m_sp = boost::make_shared<GfxApi::ShaderProgram>();
-        mesh->m_sp->attach(*vs);
-        mesh->m_sp->attach(*ps);
         mesh->generateVAO();
         mesh->linkShaders();
 
                
-        auto node = boost::make_shared<GfxApi::RenderNode>(mesh, float3(visible->m_bounds.MinX() , 
-                                                                        visible->m_bounds.MinY() ,
-                                                                        visible->m_bounds.MinZ() ),
+        auto node = boost::make_shared<GfxApi::RenderNode>(mesh, float3(0 , 
+                                                                        0 ,
+                                                                        0 ),
                                                                                     float3(1, 1, 1), 
                                                                                     float3(0, 0, 0));
         node->m_pMesh->applyVAO();
-        //node->m_pMesh->m_sp->use();
+        if(m_pLastShader != node->m_pMesh->m_sp)
+        {
+            node->m_pMesh->m_sp->use();
+            m_pLastShader = node->m_pMesh->m_sp;
+        }
 
         int worldLocation = node->m_pMesh->m_sp->getUniformLocation("world");
         assert(worldLocation != -1);
@@ -320,8 +356,7 @@ void ChunkManager::renderBounds(const Frustum& camera)
         node->m_pMesh->draw();
 
 
-
-    }
+        GfxApi::Mesh::unbindVAO();
 
 }
 
@@ -367,18 +402,14 @@ void ChunkManager::updateLoDTree(Frustum& camera)
         else if ( acceptable_error) 
         {
             //Let things stay the same
-
+            if(!visible->getValue()->m_pMesh)
+            {
+                visible->getValue()->generateMesh();
+            }
         } 
         else 
         {
-            if(!camera.Intersects(visible->getValue()->m_bounds))
-            {   
-                std::set< boost::shared_ptr<Chunk> >::iterator e = w;
-                ++w;
-               // m_visibles.erase(e);
-                continue;
-            }
-            if (visible->getLevel() < MAX_LOD_LEVEL /*&& !!visible->value()->voxel_volume*/)
+            if (visible->getLevel() < MAX_LOD_LEVEL)
             {
             
                 //If visible doesn't have children
@@ -391,9 +422,6 @@ void ChunkManager::updateLoDTree(Frustum& camera)
                         initTree(visible->getChild(corner));
                     }
                 }
-
-
-
            
                 if(visible->hasChildren() && allChildsGenerated(*visible))
                 {
@@ -424,6 +452,8 @@ void ChunkManager::updateLoDTree(Frustum& camera)
 
         ++w;
     }
+
+    printf("%i\n", m_visibles.size());
   
 }
 

@@ -44,10 +44,7 @@ float3 LinearInterp(Vector3Int p1, float p1Val, Vector3Int p2, float p2Val,  flo
 
 
 Chunk::Chunk(AABB bounds, double scale, ChunkManager* pChunkManager)
-    :/* m_posX(x)
-    , m_posY(y)
-    , m_posZ(z)*/
-      m_scale(scale)
+    : m_scale(scale)
     , m_bounds(bounds)
     , m_pChunkManager(pChunkManager)
     , m_blockVolumeFloat(nullptr)
@@ -61,6 +58,83 @@ Chunk::Chunk(AABB bounds, double scale, ChunkManager* pChunkManager)
 Chunk::~Chunk(void)
 {
  
+}
+
+void Chunk::generateBaseMap(void)
+{
+    auto& tmpBaseMap = boost::make_shared<TVolume2d<float>>(ChunkManager::CHUNK_SIZE + 2, ChunkManager::CHUNK_SIZE + 2);
+
+    auto& tmpSlopeMap = boost::make_shared<TVolume2d<float>>(ChunkManager::CHUNK_SIZE + 2, ChunkManager::CHUNK_SIZE + 2);
+
+   
+
+    boost::scoped_ptr<noisepp::Pipeline2D> pipeline( noisepp::utils::System::createOptimalPipeline2D());
+    
+
+    xml_noise2d_t xml_noise2d(*pipeline);
+    xml_noise2d_t xml_biome2d(*pipeline);
+
+    register_all_2dhandlers(xml_noise2d.handlers);
+    register_all_2dhandlers(xml_biome2d.handlers);
+
+    xml_biome2d.load("zoneDef.xml");
+    xml_noise2d.load("baseMap.xml");
+
+
+
+    noisepp::PerlinModule baseContinentDef_pe2;
+    baseContinentDef_pe2.setSeed (1 + 4);
+    baseContinentDef_pe2.setFrequency (0.001);
+    baseContinentDef_pe2.setLacunarity (2.12312);
+    baseContinentDef_pe2.setOctaveCount (8);
+    baseContinentDef_pe2.setQuality (1);
+    baseContinentDef_pe2.setScale(0.5);
+
+
+    noisepp::ElementID rootid = baseContinentDef_pe2.addToPipeline(pipeline.get());
+    noisepp::PipelineElement2D* rootelement = pipeline->getElement(rootid);
+
+    noisepp::Cache *cache = pipeline->createCache();
+
+    size_t index = 0;
+
+    float worldX = m_bounds.MinX();
+    float worldZ = m_bounds.MinZ();
+
+    double res = ((m_bounds.MaxX() - m_bounds.MinX())/ChunkManager::CHUNK_SIZE);
+
+    for(int z = 0; z < ChunkManager::CHUNK_SIZE + 2; z++)
+    {
+        for(int x = 0; x < ChunkManager::CHUNK_SIZE + 2; x ++, index++)
+        {
+            float noise =  (rootelement->getValue((worldX + (double)x * res), (worldZ + (double)z * res), cache))  ;
+
+            float& value = (*tmpBaseMap)(x, z);
+            float& slope = (*tmpSlopeMap)(x, z);
+            value = noise;
+
+            float heightz0 = (1 + rootelement->getValue((worldX + x * res), (worldZ + z * res- res), cache)) * 0.5 * (ChunkManager::CHUNK_SIZE);
+            float heightz1 = (1 + rootelement->getValue((worldX + x * res), (worldZ + z * res + res), cache)) * 0.5 * (ChunkManager::CHUNK_SIZE);
+            float heightx0 = (1 + rootelement->getValue((worldX + x * res - res ), (worldZ + z* res), cache)) * 0.5 * (ChunkManager::CHUNK_SIZE);
+            float heightx1 = (1 + rootelement->getValue((worldX + x * res + res ), (worldZ + z* res), cache)) * 0.5 * (ChunkManager::CHUNK_SIZE);
+
+            float3 tt(0, 0, 0); 	
+            float3 dv1(0, heightz0 - heightz1, 2);
+            float3 dv2(2, heightx0 - heightx1, 0);
+            tt = dv1.Cross(dv2);
+            tt.Normalize();
+            slope = tt.y;
+
+        }    
+    }
+   
+
+    pipeline->freeCache(cache);
+
+    m_slopeMap = tmpSlopeMap;
+    m_baseMap = tmpBaseMap;
+    
+
 }
 
 
@@ -81,8 +155,7 @@ void Chunk::generateTerrain(void)
     noisepp::ElementID rootid = xml_noise3d.root->addToPipeline(pipeline.get());
     noisepp::PipelineElement3D* rootelement = pipeline->getElement(rootid);
     noisepp::Cache *cache = pipeline->createCache();
-    
-
+  
     float worldX = m_bounds.MinX();
     float worldY = m_bounds.MinY();
     float worldZ = m_bounds.MinZ();
@@ -97,12 +170,49 @@ void Chunk::generateTerrain(void)
 		    {
                 float& value = (*tmpVolumeFloat)(x, y, z);
 
-                value = rootelement->getValue((worldX + (double)x * res), (worldY + (double)y * res), (worldZ + (double)z * res), cache);
+
+                value = rootelement->getValue((worldX + (double)x * res), (worldY + (double)y * res), (worldZ + (double)z * res), cache) ;
             
             }
         }
     }
-       
+
+
+ //   float yPos = (m_bounds.MinY());
+ //   float worldY = m_bounds.MinY();
+ //   double res = ((m_bounds.MaxX()-m_bounds.MinX())/ChunkManager::CHUNK_SIZE);
+
+ //   for(int z = 0; z < (ChunkManager::CHUNK_SIZE) + 2; z++)
+	//{
+ //       for(int y = 0; y < (ChunkManager::CHUNK_SIZE) + 2; y++)
+	//    {
+	//	    for(int x = 0; x < (ChunkManager::CHUNK_SIZE) + 2; x ++, index ++)
+	//	    {
+ //               double worldYCurr = (worldY + (double)y * res);
+
+ //               float value = (*m_baseMap)(x, z);
+
+ //               int height = (value)  * (600) ;
+
+ //               if(height > worldYCurr)
+ //               {
+ //                   float& value3d = (*tmpVolumeFloat)(x, y, z);
+ //                   value3d = value ;
+ //                   //printf("%f", value);
+ //               }
+
+ //               //if(height == worldYCurr)
+ //               //{
+ //               //    float& value3d = (*tmpVolumeFloat)(x, y, z);
+ //               //    float value1 = x > 0 ? (*m_baseMap)(x-1, z) : value;
+ //               //    float value2 = x < ((ChunkManager::CHUNK_SIZE) + 1) ? (*m_baseMap)(x+1, z) : value;
+ //               //    value3d = ((value + value1 + value2)/3)/2;
+ //               //}
+ //           }
+
+ //       }
+ //   }
+ //      
     m_blockVolumeFloat = tmpVolumeFloat;
 	assert(m_blockVolumeFloat);
 }
@@ -118,11 +228,10 @@ EdgeIndex Chunk::makeEdgeIndex(Vector3Int& vertA, Vector3Int& vertB)
 
 }
 
-void Chunk::generateMesh(void)
+void Chunk::generateVertices(void)
 {
-       
-    std::vector<Vertex> tmpVectorList;
-    std::vector<uint16_t> tmpIndexList;
+    auto& pVertexData = boost::make_shared<std::vector<Vertex>>();
+    auto& pIndexData = boost::make_shared<std::vector<int>>();
 
     std::map<EdgeIndex, float3> normalMap;
     std::map<EdgeIndex, uint32_t> vertexMap;
@@ -271,25 +380,42 @@ void Chunk::generateMesh(void)
 					//Computing normal as cross product of triangle's edges
                     float3 normal = (vec2 - vec1).Cross(vec3 - vec1);
 
-                    uint32_t index = getOrCreateVertex(vec1, tmpVectorList, idx1, vertexMap);
-                    tmpVectorList[index].normal += normal;
+                    uint32_t index = getOrCreateVertex(vec1, *pVertexData, idx1, vertexMap);
+                    (*pVertexData)[index].normal += normal;
                   
-                    uint32_t index1 = getOrCreateVertex(vec2, tmpVectorList, idx2, vertexMap);
-                    tmpVectorList[index1].normal += normal;
+                    uint32_t index1 = getOrCreateVertex(vec2, *pVertexData, idx2, vertexMap);
+                    (*pVertexData)[index1].normal += normal;
 
-                    uint32_t index2 = getOrCreateVertex(vec3, tmpVectorList, idx3, vertexMap);
-                    tmpVectorList[index2].normal += normal;
+                    uint32_t index2 = getOrCreateVertex(vec3, *pVertexData, idx3, vertexMap);
+                    (*pVertexData)[index2].normal += normal;
                     
-                    tmpIndexList.push_back(index);
-                    tmpIndexList.push_back(index1);
-                    tmpIndexList.push_back(index2);
+                    pIndexData->push_back(index);
+                    pIndexData->push_back(index1);
+                    pIndexData->push_back(index2);
 
 				}
             }
         } 
     }
 
-    if(!tmpVectorList.size())
+    if(!(*pVertexData).size())
+    {
+        return;
+    }
+
+    for( auto& vertexInf : (*pVertexData))
+    {
+        vertexInf.normal.Normalize();
+    }
+
+    m_indexData = pIndexData;
+    m_vertexData = pVertexData;
+}
+
+void Chunk::generateMesh(void)
+{
+       
+    if(!m_vertexData || !(*m_vertexData).size())
     {
         return;
     }
@@ -298,35 +424,18 @@ void Chunk::generateMesh(void)
     decl.add(GfxApi::VertexElement(GfxApi::VertexDataSemantic::VCOORD, GfxApi::VertexDataType::FLOAT, 3, "vertex_position"));
     decl.add(GfxApi::VertexElement(GfxApi::VertexDataSemantic::NORMAL, GfxApi::VertexDataType::FLOAT, 3, "vertex_normal"));
 
-    boost::shared_ptr<GfxApi::VertexBuffer> pVertexBuffer = boost::make_shared<GfxApi::VertexBuffer>(tmpVectorList.size(), decl);
-    boost::shared_ptr<GfxApi::IndexBuffer> pIndexBuffer = boost::make_shared<GfxApi::IndexBuffer>(tmpIndexList.size(), decl, GfxApi::PrimitiveIndexType::Indices32Bit);
+    boost::shared_ptr<GfxApi::VertexBuffer> pVertexBuffer = boost::make_shared<GfxApi::VertexBuffer>(m_vertexData->size(), decl);
+    boost::shared_ptr<GfxApi::IndexBuffer> pIndexBuffer = boost::make_shared<GfxApi::IndexBuffer>(m_indexData->size(), decl, GfxApi::PrimitiveIndexType::Indices32Bit);
 
     float * vbPtr = reinterpret_cast<float*>(pVertexBuffer->getCpuPtr());
     unsigned int * ibPtr = reinterpret_cast<unsigned int*>(pIndexBuffer->getCpuPtr());
 
-    uint32_t offset = 0;
-    for( auto& vertexInf : tmpVectorList)
-    {
-        vertexInf.normal.Normalize();
-        vbPtr[offset + 0] = vertexInf.vertex.x;
-        vbPtr[offset + 1] = vertexInf.vertex.y;
-        vbPtr[offset + 2] = vertexInf.vertex.z;
-
-        vbPtr[offset + 3] = vertexInf.normal.x;
-        vbPtr[offset + 4] = vertexInf.normal.y;
-        vbPtr[offset + 5] = vertexInf.normal.z;
-
-        offset += 6;
-    }
+    memcpy(vbPtr, &(*m_vertexData)[0], m_vertexData->size() * 4 * 6);
 
     pVertexBuffer->allocateGpu();
     pVertexBuffer->updateToGpu();
 
-    offset = 0;
-    for( auto& idx : tmpIndexList)
-    {
-        ibPtr[offset++] = idx;
-    }
+    memcpy(ibPtr, &(*m_indexData)[0], m_indexData->size() * 4);
 
     pIndexBuffer->allocateGpu();
     pIndexBuffer->updateToGpu();
@@ -336,15 +445,8 @@ void Chunk::generateMesh(void)
     mesh->m_vbs.push_back(pVertexBuffer);
     mesh->m_ib.swap(pIndexBuffer);
 
-    boost::shared_ptr<GfxApi::Shader> vs = boost::make_shared<GfxApi::Shader>(GfxApi::ShaderType::VertexShader);
-    vs->LoadFromFile(GfxApi::ShaderType::VertexShader, "shader/chunk.vs");
-
-    boost::shared_ptr<GfxApi::Shader> ps = boost::make_shared<GfxApi::Shader>(GfxApi::ShaderType::PixelShader);
-    ps->LoadFromFile(GfxApi::ShaderType::PixelShader, "shader/chunk.ps");
-
-    mesh->m_sp = boost::make_shared<GfxApi::ShaderProgram>();
-    mesh->m_sp->attach(*vs);
-    mesh->m_sp->attach(*ps);
+   
+    mesh->m_sp = m_pChunkManager->m_shaders[0];
     mesh->generateVAO();
     mesh->linkShaders();
 

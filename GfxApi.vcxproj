@@ -43,7 +43,7 @@
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>E:\OpenGLProjects\lib;F:\OglProject\GfxApi\tinyxml2;F:\OglProject\GfxApi\noisepp\threadpp;F:\OglProject\GfxApi\noisepp\core;E:\OpenGLProjects\lib\glew-1.9.0\include;E:\OpenGLProjects\lib\glfw-2.7.7\include;C:\Users\skolm\Desktop\boost_1_55_0;$(IncludePath)</IncludePath>
     <ReferencePath>$(ReferencePath)</ReferencePath>
-    <LibraryPath>E:\OpenGLProjects\lib\glew-1.9.0\lib\Release\Win32;E:\OpenGLProjects\lib\glfw-2.7.7\lib-msvc110;E:\OpenGLProjects\lib\mgl\mgl\Release;C:\Users\skolm\Desktop\boost_1_55_0\stage\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>E:\OpenGLProjects\lib\glew-1.9.0\lib\Release\Win32;E:\OpenGLProjects\lib\glfw-2.7.7\lib-msvc110;E:\OpenGLProjects\lib\mgl\mgl\Debug;C:\Users\skolm\Desktop\boost_1_55_0\stage\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>

@@ -809,7 +809,8 @@ void Mesh::linkShaders()
         BOOST_FOREACH(const VertexElement& element, dec.elements())
         {
             std::string attribute_name = element.m_name;
-            glBindAttribLocation (programHandle, attr_index, attribute_name.c_str()); checkOpenGLError();
+            glBindAttribLocation (programHandle, attr_index, attribute_name.c_str()); 
+            checkOpenGLError();
             ++attr_index;
         }
     }
@@ -824,16 +825,16 @@ void Mesh::applyVAO()
     checkValid();
     if (m_vao == 0)
         throw std::runtime_error("Can't render the mesh: no VAO");
-    
-    if (m_sp) 
-    {
-        m_sp->use();
-    }
-          
+      
     glBindVertexArray(m_vao); 
     checkOpenGLError();
 }
 
+void Mesh::unbindVAO()
+{
+    glBindVertexArray(0); 
+    checkOpenGLError();
+}
 
 void Mesh::draw(int numIndices, int startIndexOffset)
 {
@@ -881,20 +882,26 @@ void Mesh::draw(int numIndices, int startIndexOffset)
         //glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &bound_buff);
         
         //printf("%i\n", bound_buff);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ib->m_indexBuffer);
+        //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ib->m_indexBuffer);
         //printf("%i\n", index_count - startIndexOffset);
         glDrawElements(GL_TRIANGLES, index_count - startIndexOffset, data_type, (void*)startIndexOffset);
         checkOpenGLError();
         
-        //glDrawArrays (GL_TRIANGLES, 0, 3); checkOpenGLError();
     } 
     else 
     {
-        //glDrawElements(GL_TRIANGLES, index_count - startIndexOffset, data_type, (void*)startIndexOffset);
+        switch(getPrimType())
+        {
+        case PrimitiveType::TriangleList:
+            glDrawArrays (GL_TRIANGLES, startIndexOffset, 3); 
+            checkOpenGLError();
+            break;
+        case PrimitiveType::LineList:
             
-            
-        glDrawArrays (GL_TRIANGLES, startIndexOffset, 3); 
-        checkOpenGLError();
+            glDrawArrays (GL_LINES, 0, m_numVertices); 
+            checkOpenGLError();
+            break;
+        }
     }
         
 }
@@ -906,15 +913,9 @@ void Mesh::checkValid(int startVertexOffset, bool check_index_bounds) const
     {
         if (m_ib->getIndexType() == PrimitiveIndexType::IndicesNone)
             throw std::runtime_error("Invalid Mesh: Index Buffer does not have a valid index type");
-            
-       /* if (m_ib->getIndexType() != m_declaration.getIndexType())
-            throw std::runtime_error("Invalid Mesh: index buffer index-type does not match Mesh");*/
+           
     }
-        
-    /*if ( m_declaration.getIndexType() != PrimitiveIndexType::IndicesNone && !m_ib )
-        throw std::runtime_error("Invalid Mesh: No index buffer, but Mesh's vertex declaration has an index type");
-          */  
-        
+          
     if (m_vbs.size() == 0)
         throw std::runtime_error("Invalid Mesh: no Vertex Buffer");
         
@@ -923,9 +924,6 @@ void Mesh::checkValid(int startVertexOffset, bool check_index_bounds) const
     {
         if (vb.getGpuSizeInBytes() < vb.getSizeInBytes())
             throw std::runtime_error("Invalid Mesh: GPU side of VertexBuffer does not have enough memory");
-            
-        /*if (vb.getDeclaration().getPrimType() != m_declaration.getPrimType())
-            throw std::runtime_error("Invalid Mesh: vertex buffer primitive-type does not match Mesh");*/
     }
         
         
@@ -987,7 +985,7 @@ RenderNode::RenderNode(boost::shared_ptr<Mesh> mesh, float3 pos, float3 scale, f
     , m_rotation(rotation)
 {
     
-   m_xForm = float4x4::FromTRS(m_pos, float4x4::float4x4(Quat::identity, float3(0,0,0)), m_scale); 
+   m_xForm = float4x4::FromTRS(m_pos, float4x4(Quat::identity, float3(0,0,0)), m_scale); 
 
 }
 

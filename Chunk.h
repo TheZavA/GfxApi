@@ -2,8 +2,9 @@
 #define _CHUNK_H
 
 #include <boost\shared_ptr.hpp>
-#include <boost\noncopyable.hpp>
-#include "voxel\TVolume3d.h"
+#include <boost/noncopyable.hpp>
+#include "voxel/TVolume3d.h"
+#include "voxel/TVolume2d.h"
 
 #include <mgl/MathGeoLib.h>
 
@@ -46,7 +47,11 @@ public:
 
     void generateTerrain(void);
 
+    void generateVertices(void);
+
     void generateMesh(void);
+
+    void generateBaseMap(void);
 
     boost::shared_ptr<GfxApi::Mesh> m_pMesh;
 
@@ -59,6 +64,12 @@ public:
     boost::shared_ptr<bool> m_workInProgress;
 
     boost::shared_ptr<TVolume3d<float>> m_blockVolumeFloat;
+
+    boost::shared_ptr<TVolume2d<float>> m_baseMap;
+    boost::shared_ptr<TVolume2d<float>> m_slopeMap;
+
+    boost::shared_ptr<std::vector<Vertex>> m_vertexData;
+    boost::shared_ptr<std::vector<int>> m_indexData;
 
 private:
 

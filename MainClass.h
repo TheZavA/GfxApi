@@ -62,6 +62,12 @@ private:
 
     Frustum m_camera;
 
+    Frustum m_cameraFrozen;
+
+    bool m_bNoCamUpdate;
+
+    bool m_bHideTerrain;
+
     boost::shared_ptr<GfxApi::Input> m_pInput;
 
     tick_t m_lastTick;

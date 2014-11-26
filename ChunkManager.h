@@ -4,6 +4,7 @@
 #include <vector>
 #include <list>
 #include <set>
+
 #include <boost/shared_ptr.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
@@ -12,11 +13,15 @@
 
 #include "mgl/MathGeoLib.h"
 
+
+
 class Chunk;
 
 namespace GfxApi {
 class ShaderProgram;
 }
+
+struct ocl_t;
 
 class ChunkManager
 {
@@ -29,11 +34,12 @@ public:
     static const int CHUNK_SIZE = 32;
     static const int MAX_LOD_LEVEL = 16;
 
+    boost::shared_ptr<ocl_t> m_ocl;
 
-    static const int WORLD_BOUNDS_MIN_XZ = -8000;
-    static const int WORLD_BOUNDS_MIN_Y = -8000;
-    static const int WORLD_BOUNDS_MAX_XZ = 8000;
-    static const int WORLD_BOUNDS_MAX_Y = 8000;
+    static const int WORLD_BOUNDS_MIN_XZ = -16000;
+    static const int WORLD_BOUNDS_MIN_Y = -16000;
+    static const int WORLD_BOUNDS_MAX_XZ = 16000;
+    static const int WORLD_BOUNDS_MAX_Y = 16000;
 
     void render(void);
 

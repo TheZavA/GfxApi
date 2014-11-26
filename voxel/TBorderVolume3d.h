@@ -1,42 +1,49 @@
-#ifndef TVOLUME3D_H
-#define TVOLUME3D_H
+#ifndef TBORDERVOLUME3D_H
+#define TBORDERVOLUME3D_H
 
 #include <vector>
 #include <memory>
 #include <boost/scoped_array.hpp>
 
-static inline size_t toindex(size_t x, size_t y, size_t z,
-                            size_t x_length, size_t y_length, size_t z_length)
-{
-    return y * x_length + z * z_length + x;
-}
-
-
 template<class T>
-class TVolume3d
+class TBorderVolume3d
 {
 
 public:
-    TVolume3d(std::size_t xSize, std::size_t ySize, std::size_t zSize);
-    ~TVolume3d();
+    TBorderVolume3d(std::size_t xSize, std::size_t ySize, std::size_t zSize, std::size_t bSize);
+    ~TBorderVolume3d();
 
     void clear();
 
-    const std::size_t toIndex(std::size_t x, std::size_t y, std::size_t z) const;
-    void fromIndex(std::size_t &x, std::size_t &y, std::size_t &z, std::size_t index) const;
+    const std::size_t toIndex(int32_t x, int32_t y, int32_t z) const;
+
+    T& operator()(int32_t x, int32_t y, int32_t z);
+    const T& operator()(int32_t x, int32_t y, int32_t z) const;
 
     T& operator[](std::size_t index);
     const T& operator[](std::size_t index) const;
 
-    T& operator()(std::size_t x, std::size_t y, std::size_t z);
-    const T& operator()(std::size_t x, std::size_t y, std::size_t z) const;
+    int32_t m_xSize;
+    int32_t m_ySize;
+    int32_t m_zSize;
 
-    std::size_t m_xSize;
-    std::size_t m_ySize;
-    std::size_t m_zSize;
+    int32_t m_xMin;
+    int32_t m_yMin;
+    int32_t m_zMin;
 
+    int32_t m_xMax;
+    int32_t m_yMax;
+    int32_t m_zMax;
+
+    std::size_t m_xSizeInner;
+    std::size_t m_ySizeInner;
+    std::size_t m_zSizeInner;
+
+    // including border size
     std::size_t m_xzSize;
     std::size_t m_xyzSize;
+
+    std::size_t m_bSize;
 
     boost::scoped_array<T> m_data;
 
@@ -45,7 +52,7 @@ public:
         return m_data.get();
     }
 
-    void upsample_yzx(TVolume3d<T>& vout)
+    void upsample_yzx(TBorderVolume3d<T>& vout)
     {
         size_t vin_size = m_xSize * m_ySize * m_zSize;
         size_t x_length2 = m_xSize << 1;
@@ -115,56 +122,66 @@ public:
 
 
 template<class T>
-TVolume3d<T>::TVolume3d(std::size_t xSize, std::size_t ySize, std::size_t zSize) 
+TBorderVolume3d<T>::TBorderVolume3d(std::size_t xSize, std::size_t ySize, std::size_t zSize, std::size_t bSize) 
 {
-     m_xSize = xSize;
-     m_ySize = ySize;
-     m_zSize = zSize;
+    m_bSize = bSize;
+    m_xSize = xSize + (bSize * 2);
+    m_ySize = ySize + (bSize * 2);
+    m_zSize = zSize + (bSize * 2);
 
-     m_xzSize = xSize * zSize;
+    m_xMin = -(int)bSize;
+    m_yMin = -(int)bSize;
+    m_zMin = -(int)bSize;
 
-     m_xyzSize = xSize * ySize * zSize;
+    m_xMax = xSize + bSize;
+    m_yMax = ySize + bSize;
+    m_zMax = zSize + bSize;
+
+    m_xSizeInner = xSize;
+    m_ySizeInner = ySize;
+    m_zSizeInner = zSize;
+
+    m_xzSize = (m_xSize) * (m_zSize);
+
+    m_xyzSize = (m_xSize) * (m_ySize) * (m_zSize);
 
     
-     m_data.reset(new T[ m_xyzSize]);
+    m_data.reset(new T[ m_xyzSize]);
 }
 
 
 template<class T>
-TVolume3d<T>::~TVolume3d() 
+TBorderVolume3d<T>::~TBorderVolume3d() 
 {
 
 }
 
 template<class T>
-void TVolume3d<T>::clear()
+void TBorderVolume3d<T>::clear()
 {
     memset(m_data.get(), 0, m_xyzSize * sizeof(T));
 }
 
 
 template<class T>
-__inline const std::size_t TVolume3d<T>::toIndex(std::size_t x, std::size_t y, std::size_t z) const 
+__inline const std::size_t TBorderVolume3d<T>::toIndex(int32_t x, int32_t y, int32_t z) const 
 {
-   std::size_t index = (y *  m_xzSize) + (z *  m_xSize) + x;
-   assert(index <  m_xyzSize);
-   return index;
+    assert((x + m_bSize) >= 0);
+    assert((x + m_bSize) < m_xSize);
+
+    assert((y + m_bSize) >= 0);
+    assert((y + m_bSize) < m_ySize);
+
+    assert((z + m_bSize) >= 0);
+    assert((z + m_bSize) < m_zSize);
+
+    std::size_t index = ((y + m_bSize) *  m_xzSize) + ((z + m_bSize) *  m_xSize) + (x + m_bSize);
+    assert(index < m_xyzSize);
+    return index;
 }
 
-
 template<class T>
-__inline void TVolume3d<T>::fromIndex(std::size_t &x, std::size_t &y, std::size_t &z, std::size_t index) const 
-{
-    z = (index /  m_zSize) %  m_ySize;
-    y = index / ( m_zSize *  m_zSize);
-    x = index %  m_zSize;
-
-    assert(toIndex(x, y, z) == index);
-}
-
-
-template<class T>
-__inline T& TVolume3d<T>::operator[](std::size_t index)
+__inline T& TBorderVolume3d<T>::operator[](std::size_t index)
 {
     assert(index <  m_xyzSize);
     
@@ -172,15 +189,14 @@ __inline T& TVolume3d<T>::operator[](std::size_t index)
 }
 
 template<class T>
-__inline const T& TVolume3d<T>::operator[](std::size_t index) const 
+__inline const T& TBorderVolume3d<T>::operator[](std::size_t index) const 
 {
     assert(index <  m_xyzSize);
     return  m_data[index];
 }
 
-
 template<class T>
-__inline T& TVolume3d<T>::operator()(std::size_t x, std::size_t y, std::size_t z) 
+__inline T& TBorderVolume3d<T>::operator()(int32_t x, int32_t y, int32_t z) 
 {
     std::size_t index = toIndex(x, y, z);
     assert(index <  m_xyzSize);
@@ -192,7 +208,7 @@ __inline T& TVolume3d<T>::operator()(std::size_t x, std::size_t y, std::size_t z
 
 
 template<class T>
-__inline const T& TVolume3d<T>::operator()(std::size_t x, std::size_t y, std::size_t z) const 
+__inline const T& TBorderVolume3d<T>::operator()(int32_t x, int32_t y, int32_t z) const 
 {
     std::size_t index = toIndex(x, y, z);
     assert(index <  m_xyzSize);

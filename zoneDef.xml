@@ -1,0 +1,6 @@
+<noise>
+   
+	<voronoi  frequency="0.04" octaves="1" persistence=".5" scale="0.6" lacunarity="2.0" seed="334"/>
+
+
+</noise>

@@ -41,14 +41,14 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>E:\OpenGLProjects\lib;F:\OglProject\GfxApi\tinyxml2;F:\OglProject\GfxApi\noisepp\threadpp;F:\OglProject\GfxApi\noisepp\core;E:\OpenGLProjects\lib\glew-1.9.0\include;E:\OpenGLProjects\lib\glfw-2.7.7\include;C:\Users\skolm\Desktop\boost_1_55_0;$(IncludePath)</IncludePath>
+    <IncludePath>E:\cuda_toolkit\include;E:\OpenGLProjects\lib;F:\OglProject\GfxApi\tinyxml2;F:\OglProject\GfxApi\noisepp\threadpp;F:\OglProject\GfxApi\noisepp\core;E:\OpenGLProjects\lib\glew-1.9.0\include;E:\OpenGLProjects\lib\glfw-2.7.7\include;C:\Users\skolm\Desktop\boost_1_55_0;$(IncludePath)</IncludePath>
     <ReferencePath>$(ReferencePath)</ReferencePath>
-    <LibraryPath>E:\OpenGLProjects\lib\glew-1.9.0\lib\Release\Win32;E:\OpenGLProjects\lib\glfw-2.7.7\lib-msvc110;E:\OpenGLProjects\lib\mgl\mgl\Debug;C:\Users\skolm\Desktop\boost_1_55_0\stage\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>E:\cuda_toolkit\lib\Win32;E:\OpenGLProjects\lib\glew-1.9.0\lib\Release\Win32;E:\OpenGLProjects\lib\glfw-2.7.7\lib-msvc110;E:\OpenGLProjects\lib\mgl\mgl\Debug;C:\Users\skolm\Desktop\boost_1_55_0\stage\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>E:\OpenGLProjects\lib;F:\OglProject\GfxApi\tinyxml2;F:\OglProject\GfxApi\noisepp\threadpp;F:\OglProject\GfxApi\noisepp\core;E:\OpenGLProjects\lib\glew-1.9.0\include;E:\OpenGLProjects\lib\glfw-2.7.7\include;C:\Users\skolm\Desktop\boost_1_55_0;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(IncludePath)</IncludePath>
-    <LibraryPath>E:\OpenGLProjects\lib\glew-1.9.0\lib\Release\Win32;E:\OpenGLProjects\lib\glfw-2.7.7\lib-msvc110;E:\OpenGLProjects\lib\mgl\mgl\Release;C:\Users\skolm\Desktop\boost_1_55_0\stage\lib;$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSDK_LibraryPath_x86);</LibraryPath>
+    <IncludePath>E:\cuda_toolkit\include;E:\OpenGLProjects\lib;F:\OglProject\GfxApi\tinyxml2;F:\OglProject\GfxApi\noisepp\threadpp;F:\OglProject\GfxApi\noisepp\core;E:\OpenGLProjects\lib\glew-1.9.0\include;E:\OpenGLProjects\lib\glfw-2.7.7\include;C:\Users\skolm\Desktop\boost_1_55_0;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(IncludePath)</IncludePath>
+    <LibraryPath>E:\cuda_toolkit\lib\Win32;E:\OpenGLProjects\lib\glew-1.9.0\lib\Release\Win32;E:\OpenGLProjects\lib\glfw-2.7.7\lib-msvc110;E:\OpenGLProjects\lib\mgl\mgl\Release;C:\Users\skolm\Desktop\boost_1_55_0\stage\lib;$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSDK_LibraryPath_x86)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -56,12 +56,12 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;GLEW_STATIC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);NOMINMAX</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;GLEW_STATIC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);NOMINMAX;MATH_ENABLE_UNCOMMON_OPERATIONS</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>mgl.lib;glfw3.lib;glew32s.lib;opengl32.lib;glu32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>OpenCL.lib;mgl.lib;glfw3.lib;glew32s.lib;opengl32.lib;glu32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -72,25 +72,25 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);NOMINMAX</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);NOMINMAX;MATH_ENABLE_UNCOMMON_OPERATIONS</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>mgl.lib;glfw3.lib;glew32s.lib;glew32.lib;opengl32.lib;glu32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>OpenCL.lib;mgl.lib;glfw3.lib;glew32s.lib;glew32.lib;opengl32.lib;glu32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Chunk.h" />
     <ClInclude Include="ChunkManager.h" />
+    <ClInclude Include="cl.hpp" />
     <ClInclude Include="cubelib\cube.hpp" />
     <ClInclude Include="cubelib\cube.inl.hpp" />
     <ClInclude Include="cubelib\logic_utility.hpp" />
     <ClInclude Include="GfxApi.h" />
     <ClInclude Include="MainClass.h" />
-    <ClInclude Include="McTable.h" />
     <ClInclude Include="noisepp\core\Noise.h" />
     <ClInclude Include="noisepp\core\NoiseAbsolute.h" />
     <ClInclude Include="noisepp\core\NoiseAddition.h" />
@@ -148,9 +148,13 @@
     <ClInclude Include="noisepp\utils\NoiseSystem.h" />
     <ClInclude Include="noisepp\utils\NoiseUtils.h" />
     <ClInclude Include="noisepp\utils\NoiseWriter.h" />
+    <ClInclude Include="ocl.h" />
+    <ClInclude Include="qef.h" />
     <ClInclude Include="tinyxml2\tinyxml2.h" />
     <ClInclude Include="TOctree.h" />
     <ClInclude Include="TQueueLocked.h" />
+    <ClInclude Include="voxel\McTable.h" />
+    <ClInclude Include="voxel\TBorderVolume3d.h" />
     <ClInclude Include="voxel\TVolume2d.h" />
     <ClInclude Include="voxel\TVolume3d.h" />
     <ClInclude Include="voxel\TVolumePool.h" />
@@ -180,12 +184,18 @@
     <ClCompile Include="noisepp\utils\NoiseReader.cpp" />
     <ClCompile Include="noisepp\utils\NoiseSystem.cpp" />
     <ClCompile Include="noisepp\utils\NoiseWriter.cpp" />
+    <ClCompile Include="qef.cpp" />
     <ClCompile Include="tinyxml2\tinyxml2.cpp" />
     <ClCompile Include="xmlnoise\xml_noise2d.cpp" />
     <ClCompile Include="xmlnoise\xml_noise2d_handlers.cpp" />
     <ClCompile Include="xmlnoise\xml_noise3d.cpp" />
     <ClCompile Include="xmlnoise\xml_noise3d_handlers.cpp" />
     <ClCompile Include="xmlnoise\xml_noise_handlers.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="noise.cl" />
+    <None Include="noisetest.cl" />
+    <None Include="testproject.cl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

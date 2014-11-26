@@ -19,6 +19,7 @@ using namespace boost::adaptors;
 
 #include <algorithm>
 
+#include "ocl.h"
 
 namespace GfxApi {
 
@@ -893,12 +894,15 @@ void Mesh::draw(int numIndices, int startIndexOffset)
         switch(getPrimType())
         {
         case PrimitiveType::TriangleList:
-            glDrawArrays (GL_TRIANGLES, startIndexOffset, 3); 
+            glDrawArrays (GL_TRIANGLES, startIndexOffset, m_numVertices); 
             checkOpenGLError();
             break;
         case PrimitiveType::LineList:
-            
             glDrawArrays (GL_LINES, 0, m_numVertices); 
+            checkOpenGLError();
+            break;
+        case PrimitiveType::Point:
+            glDrawArrays (GL_POINTS, 0, m_numVertices); 
             checkOpenGLError();
             break;
         }

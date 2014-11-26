@@ -1,0 +1,8 @@
+<noise>
+
+
+<addition>
+	<perlin  frequency="0.02" octaves="6" scale="1.6" lacunarity="1.9" seed="3234"/>
+	<const value="-0.65"/>
+</addition>
+</noise>

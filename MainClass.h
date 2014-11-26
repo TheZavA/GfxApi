@@ -68,6 +68,8 @@ private:
 
     bool m_bHideTerrain;
 
+    bool m_bShowTree;
+
     boost::shared_ptr<GfxApi::Input> m_pInput;
 
     tick_t m_lastTick;

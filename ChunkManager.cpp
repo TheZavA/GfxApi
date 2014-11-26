@@ -14,11 +14,16 @@
 
 #include <set>
 
-
+#include "ocl.h"
 
 
 ChunkManager::ChunkManager(void)
 {
+   
+
+    m_ocl = boost::make_shared<ocl_t>(0,0);
+
+    m_ocl->load_cl_source("noisetest.cl");
 
     boost::shared_ptr<GfxApi::Shader> vs = boost::make_shared<GfxApi::Shader>(GfxApi::ShaderType::VertexShader);
     vs->LoadFromFile(GfxApi::ShaderType::VertexShader, "shader/chunk.vs");
@@ -45,6 +50,9 @@ ChunkManager::ChunkManager(void)
 
     std::thread chunkLoadThread(&ChunkManager::chunkLoaderThread, this);
 	chunkLoadThread.detach();
+
+    std::thread chunkLoadThread1(&ChunkManager::chunkLoaderThread, this);
+	chunkLoadThread1.detach();
 
     AABB rootBounds(vec(WORLD_BOUNDS_MIN_XZ, WORLD_BOUNDS_MIN_Y, WORLD_BOUNDS_MIN_XZ), 
                     vec(WORLD_BOUNDS_MAX_XZ, WORLD_BOUNDS_MAX_Y, WORLD_BOUNDS_MAX_XZ));
@@ -203,10 +211,10 @@ bool ChunkManager::isAcceptablePixelError(float3& cameraPos, ChunkTree& tree)
   
     //World length of highest LOD node
     //float x_0 = 128.0;
-    float x_0 = 64;
+    float x_0 = 8;
 
     /////All nodes within this distance will surely be rendered
-    float f_0 = x_0 * 0.8;
+    float f_0 = x_0 * 1.2;
   
     /////Total nodes
     float t = math::Pow(2 * (f_0 / x_0), 3);
@@ -279,9 +287,9 @@ void ChunkManager::renderBounds(const Frustum& camera)
 
 
 
-        BOOST_FOREACH(const cube::edge_t& edge, cube::edge_t::all())
+        for(const cube::edge_t& edge : cube::edge_t::all())
         {
-            BOOST_FOREACH(const cube::corner_t& corner, edge.corners())
+            for(const cube::corner_t& corner : edge.corners())
             {
                 float3 corner_position = box.CornerPoint(corner.index());
                 float3 relative_corner = corner_position - box.CenterPoint();
@@ -301,62 +309,59 @@ void ChunkManager::renderBounds(const Frustum& camera)
 
     }
 
-        GfxApi::VertexDeclaration decl;
-        decl.add(GfxApi::VertexElement(GfxApi::VertexDataSemantic::VCOORD, GfxApi::VertexDataType::FLOAT, 3, "vertex_position"));
-        decl.add(GfxApi::VertexElement(GfxApi::VertexDataSemantic::COLOR, GfxApi::VertexDataType::FLOAT, 3, "vertex_color"));
+    GfxApi::VertexDeclaration decl;
+    decl.add(GfxApi::VertexElement(GfxApi::VertexDataSemantic::VCOORD, GfxApi::VertexDataType::FLOAT, 3, "vertex_position"));
+    decl.add(GfxApi::VertexElement(GfxApi::VertexDataSemantic::COLOR, GfxApi::VertexDataType::FLOAT, 3, "vertex_color"));
 
-        boost::shared_ptr<GfxApi::VertexBuffer> pVertexBuffer = boost::make_shared<GfxApi::VertexBuffer>(vertexData.size()/6, decl);
+    boost::shared_ptr<GfxApi::VertexBuffer> pVertexBuffer = boost::make_shared<GfxApi::VertexBuffer>(vertexData.size()/6, decl);
 
-        float * vbPtr = reinterpret_cast<float*>(pVertexBuffer->getCpuPtr());
+    float * vbPtr = reinterpret_cast<float*>(pVertexBuffer->getCpuPtr());
         
 
-        uint32_t offset = 0;
-        for( auto& vertexInf : vertexData)
-        {
+    uint32_t offset = 0;
+    for( auto& vertexInf : vertexData)
+    {
 
-            vbPtr[offset] = vertexInf;
+        vbPtr[offset] = vertexInf;
 
-            offset ++;
-        }
+        offset ++;
+    }
 
-        pVertexBuffer->allocateGpu();
-        pVertexBuffer->updateToGpu();
+    pVertexBuffer->allocateGpu();
+    pVertexBuffer->updateToGpu();
 
-        auto mesh = boost::make_shared<GfxApi::Mesh>(GfxApi::PrimitiveType::LineList);
+    auto mesh = boost::make_shared<GfxApi::Mesh>(GfxApi::PrimitiveType::LineList);
 
-        mesh->m_vbs.push_back(pVertexBuffer);
+    mesh->m_vbs.push_back(pVertexBuffer);
 
-        mesh->m_sp = m_shaders[1];
+    mesh->m_sp = m_shaders[1];
 
-        mesh->generateVAO();
-        mesh->linkShaders();
+    mesh->generateVAO();
+    mesh->linkShaders();
 
                
-        auto node = boost::make_shared<GfxApi::RenderNode>(mesh, float3(0 , 
-                                                                        0 ,
-                                                                        0 ),
-                                                                                    float3(1, 1, 1), 
-                                                                                    float3(0, 0, 0));
-        node->m_pMesh->applyVAO();
-        if(m_pLastShader != node->m_pMesh->m_sp)
-        {
-            node->m_pMesh->m_sp->use();
-            m_pLastShader = node->m_pMesh->m_sp;
-        }
+    auto node = boost::make_shared<GfxApi::RenderNode>(mesh, float3(0, 0, 0), float3(1, 1, 1), float3(0, 0, 0));
 
-        int worldLocation = node->m_pMesh->m_sp->getUniformLocation("world");
-        assert(worldLocation != -1);
-        int worldViewProjLocation = node->m_pMesh->m_sp->getUniformLocation("worldViewProj");
-        assert(worldViewProjLocation != -1);
+    node->m_pMesh->applyVAO();
+    if(m_pLastShader != node->m_pMesh->m_sp)
+    {
+        node->m_pMesh->m_sp->use();
+        m_pLastShader = node->m_pMesh->m_sp;
+    }
+
+    int worldLocation = node->m_pMesh->m_sp->getUniformLocation("world");
+    assert(worldLocation != -1);
+    int worldViewProjLocation = node->m_pMesh->m_sp->getUniformLocation("worldViewProj");
+    assert(worldViewProjLocation != -1);
             
-        float4x4 world = node->m_xForm;
-        node->m_pMesh->m_sp->setFloat4x4(worldLocation, world);
-        node->m_pMesh->m_sp->setFloat4x4(worldViewProjLocation, camera.ViewProjMatrix() );
+    float4x4 world = node->m_xForm;
+    node->m_pMesh->m_sp->setFloat4x4(worldLocation, world);
+    node->m_pMesh->m_sp->setFloat4x4(worldViewProjLocation, camera.ViewProjMatrix() );
             
-        node->m_pMesh->draw();
+    node->m_pMesh->draw();
 
 
-        GfxApi::Mesh::unbindVAO();
+    GfxApi::Mesh::unbindVAO();
 
 }
 
@@ -389,6 +394,11 @@ void ChunkManager::updateLoDTree(Frustum& camera)
             
             //Add the parent to visibles
             m_visibles.insert(parent->getValue());
+
+            if(visible->hasChildren())
+            {
+                visible->join();
+            }
             
             {
                 
@@ -397,6 +407,8 @@ void ChunkManager::updateLoDTree(Frustum& camera)
                 m_visibles.erase(e);
                 continue;
             }
+
+
 
         } 
         else if ( acceptable_error) 
@@ -453,7 +465,7 @@ void ChunkManager::updateLoDTree(Frustum& camera)
         ++w;
     }
 
-    printf("%i\n", m_visibles.size());
+    //printf("%i\n", m_visibles.size());
   
 }
 

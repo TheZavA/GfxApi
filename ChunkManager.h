@@ -32,14 +32,14 @@ public:
     typedef TOctree<boost::shared_ptr<Chunk>> ChunkTree;
 
     static const int CHUNK_SIZE = 32;
-    static const int MAX_LOD_LEVEL = 16;
+    static const int MAX_LOD_LEVEL = 12;
 
     boost::shared_ptr<ocl_t> m_ocl;
 
-    static const int WORLD_BOUNDS_MIN_XZ = -16000;
-    static const int WORLD_BOUNDS_MIN_Y = -16000;
-    static const int WORLD_BOUNDS_MAX_XZ = 16000;
-    static const int WORLD_BOUNDS_MAX_Y = 16000;
+    static const int WORLD_BOUNDS_MIN_XZ = -8000;
+    static const int WORLD_BOUNDS_MIN_Y = -8000;
+    static const int WORLD_BOUNDS_MAX_XZ = 8000;
+    static const int WORLD_BOUNDS_MAX_Y = 8000;
 
     void render(void);
 

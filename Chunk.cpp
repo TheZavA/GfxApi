@@ -504,9 +504,9 @@ void Chunk::generateVertices(void)
 
                     
                     // DC NORMALS TEST VALUES     //////////////////////////////
-                    edgeNormals[triTable[cubeIndex][n]] = sNormal;
-                    edgeNormals[triTable[cubeIndex][n+1]] = sNormal;
-                    edgeNormals[triTable[cubeIndex][n+2]] = sNormal;
+                    edgeNormals[triTable[cubeIndex][n]] = normal;
+                    edgeNormals[triTable[cubeIndex][n+1]] = normal;
+                    edgeNormals[triTable[cubeIndex][n+2]] = normal;
                     ////////////////////////////////////////////////////////////
 
 				}

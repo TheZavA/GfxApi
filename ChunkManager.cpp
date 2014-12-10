@@ -383,7 +383,7 @@ void ChunkManager::updateLoDTree(Frustum& camera)
         ChunkTree* parent = visible->getParent();
         BOOST_ASSERT(parent);
     
-        bool parent_acceptable_error = !parent->isRoot() && isAcceptablePixelError(camera.pos, *parent);
+d        bool parent_acceptable_error = !parent->isRoot() && isAcceptablePixelError(camera.pos, *parent);
         bool acceptable_error = isAcceptablePixelError(camera.pos, *visible);
         
         BOOST_ASSERT(lif(parent_acceptable_error, acceptable_error));

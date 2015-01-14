@@ -9,7 +9,6 @@
 #include <boost/shared_ptr.hpp>
 
 
-
 void initText2D(const char * texturePath);
 void printText2D(const char * text, int x, int y, int size);
 void cleanupText2D();
@@ -76,7 +75,8 @@ private:
 
     std::vector<boost::shared_ptr<GfxApi::RenderNode>> m_meshList;
 
-    boost::shared_ptr<ChunkManager> m_pChunkMgr;
+    boost::shared_ptr<ChunkManager> m_pChunkManager;
+
 };
 
 #endif

@@ -9,6 +9,7 @@
 #include <iostream>
 #include <fstream>
 
+#include "voxel/Chunk.h"
 
 struct ocl_t
 {
@@ -176,7 +177,72 @@ struct ocl_t
         
     }
 
-    void test2(float* r, std::size_t rn, float worldx, float worldy, float worldz, float res)
+    void density3d(float* r, std::size_t rn, float worldx, float worldy, float worldz, float res)
+    {
+        //this is hardcoded in test, but you can ofc change this,
+        // either making it dynamic in test, or rehardcoding it to something else
+        std::size_t unit_size = 1;
+        std::size_t units = rn;
+
+        // create buffers on the device
+        cl::Buffer ocl_r(*context,CL_MEM_READ_WRITE,rn*rn*rn*sizeof(float));
+
+        //create queue to which we will push commands for the device.
+        cl::CommandQueue queue(*context,default_device);
+     
+        //write arrays A and B to the device
+        queue.enqueueWriteBuffer(ocl_r/*buffer*/,CL_TRUE/*blocking*/, 0/*offset*/,(rn)*(rn)*(rn)*sizeof(float)/*size*/,r/*cpu ptr to copy*/);
+
+        //run the kernel
+        cl::make_kernel<cl::Buffer&, float, float, float, float> test(cl::Kernel(*program,"test"));
+        
+        cl::EnqueueArgs eargs(queue, cl::NDRange(units, units, units));
+
+        test(eargs, ocl_r /*other var/buffers go here*/, worldx, worldy, worldz, res);
+
+        //read result C from the device to array C
+        queue.enqueueReadBuffer(ocl_r,CL_TRUE,0,rn*rn*rn*sizeof(float), r);
+        
+    }
+
+    void generateCorners(float* inDens, corner_cl_t* r, std::size_t rn, float worldx, float worldy, float worldz, float res)
+    {
+        //this is hardcoded in test, but you can ofc change this,
+        // either making it dynamic in test, or rehardcoding it to something else
+        std::size_t unit_size = 1;
+        std::size_t units = rn;
+
+        std::size_t rn1 = rn + 1;
+
+        // create buffers on the device
+        cl::Buffer ocl_a(*context,CL_MEM_READ_ONLY,rn1*rn1*rn1*sizeof(float));
+        cl::Buffer ocl_r(*context,CL_MEM_READ_WRITE,rn*rn*rn*sizeof(corner_cl_t));
+     
+        //create queue to which we will push commands for the device.
+        cl::CommandQueue queue(*context, default_device);
+     
+        //write arrays A and B to the device
+        queue.enqueueWriteBuffer(ocl_a/*buffer*/,CL_TRUE/*blocking*/, 0/*offset*/,rn1*rn1*rn1*sizeof(float)/*size*/,inDens/*cpu ptr to copy*/);
+        queue.enqueueWriteBuffer(ocl_r/*buffer*/,CL_TRUE/*blocking*/, 0/*offset*/,rn*rn*rn*sizeof(corner_cl_t)/*size*/,r/*cpu ptr to copy*/);
+
+        //run the kernel
+        cl::make_kernel<cl::Buffer&, cl::Buffer&, cl_float3_t, float> genCorners(cl::Kernel(*program,"genCorners"));
+        
+        cl::EnqueueArgs eargs(queue, cl::NDRange(units, units, units));
+
+        cl_float3_t pos; 
+        pos.x = worldx;
+        pos.y = worldy;
+        pos.z = worldz;
+
+        genCorners(eargs, ocl_a, ocl_r /*other var/buffers go here*/, pos, res);
+
+        //read result C from the device to array C
+        queue.enqueueReadBuffer(ocl_r, CL_TRUE, 0,rn*rn*rn*sizeof(corner_cl_t), r);
+        
+    }
+
+    void density2d(float* r, std::size_t rn, float worldx, float worldy, float res, int level)
     {
         //this is hardcoded in test, but you can ofc change this,
         // either making it dynamic in test, or rehardcoding it to something else
@@ -186,7 +252,7 @@ struct ocl_t
         
      
         // create buffers on the device
-        cl::Buffer ocl_r(*context,CL_MEM_READ_WRITE,rn*rn*rn*sizeof(float));
+        cl::Buffer ocl_r(*context,CL_MEM_READ_WRITE,rn*rn*sizeof(float));
      
         
      
@@ -194,22 +260,95 @@ struct ocl_t
         cl::CommandQueue queue(*context,default_device);
      
         //write arrays A and B to the device
-        queue.enqueueWriteBuffer(ocl_r/*buffer*/,CL_TRUE/*blocking*/, 0/*offset*/,rn*rn*rn*sizeof(float)/*size*/,r/*cpu ptr to copy*/);
+        queue.enqueueWriteBuffer(ocl_r/*buffer*/,CL_TRUE/*blocking*/, 0/*offset*/,rn*rn*sizeof(float)/*size*/,r/*cpu ptr to copy*/);
 
      
         
         //run the kernel
-        cl::make_kernel<cl::Buffer&, float, float, float, float> test(cl::Kernel(*program,"test"));
+        cl::make_kernel<cl::Buffer&, float, float, float, int> density2d(cl::Kernel(*program,"get2dNoise"));
         
-        cl::EnqueueArgs eargs(queue, cl::NDRange(units, units, units));
+        cl::EnqueueArgs eargs(queue, cl::NDRange(units, units));
         //cl::KernelFunctor test(cl::Kernel(*program,"test"),
         //                                     queue,cl::NullRange,cl::NDRange(units),cl::NullRange);
         
       //  assert(rn==16);
-        test(eargs, ocl_r /*other var/buffers go here*/, worldx, worldy, worldz, res);
+        density2d(eargs, ocl_r /*other var/buffers go here*/, worldx, worldy, res, level);
 
         //read result C from the device to array C
-        queue.enqueueReadBuffer(ocl_r,CL_TRUE,0,rn*rn*rn*sizeof(float), r);
+        queue.enqueueReadBuffer(ocl_r,CL_TRUE,0,rn*rn*sizeof(float), r);
+        
+    }
+
+    void generateZeroCrossings(std::vector<corner_cl_t>& r, zeroCrossings_cl_t* r2, std::size_t rn, float worldx, float worldy, float worldz, float res)
+    {
+        //this is hardcoded in test, but you can ofc change this,
+        // either making it dynamic in test, or rehardcoding it to something else
+        std::size_t unit_size = 1;
+        std::size_t units = r.size();
+
+        // create buffers on the device
+        cl::Buffer ocl_a(*context,CL_MEM_READ_ONLY,r.size()*sizeof(corner_cl_t));
+        cl::Buffer ocl_b(*context,CL_MEM_READ_WRITE,rn*rn*rn*sizeof(zeroCrossings_cl_t));
+
+        //create queue to which we will push commands for the device.
+        cl::CommandQueue queue(*context,default_device);
+     
+        //write arrays A and B to the device
+        queue.enqueueWriteBuffer(ocl_a/*buffer*/,CL_TRUE/*blocking*/, 0/*offset*/,r.size()*sizeof(corner_cl_t)/*size*/,&r[0]/*cpu ptr to copy*/);
+        queue.enqueueWriteBuffer(ocl_b/*buffer*/,CL_TRUE/*blocking*/, 0/*offset*/,rn*rn*rn*sizeof(zeroCrossings_cl_t)/*size*/,r2/*cpu ptr to copy*/);
+
+        //run the kernel
+        cl::make_kernel<cl::Buffer&, cl::Buffer&, cl_float3_t, float> genZeroCrossings(cl::Kernel(*program,"genZeroCrossings"));
+        
+        cl::EnqueueArgs eargs(queue, cl::NDRange(units));
+        cl_float3_t pos; 
+        pos.x = worldx;
+        pos.y = worldy;
+        pos.z = worldz;
+      
+        genZeroCrossings(eargs, ocl_a, ocl_b, pos, res);
+
+        //read result C from the device to array C
+        queue.enqueueReadBuffer(ocl_b,CL_TRUE,0,rn*rn*rn*sizeof(zeroCrossings_cl_t), r2);
+        
+    }
+
+    void density2dFromArray(float* r, float* r2, std::size_t rn)
+    {
+        //this is hardcoded in test, but you can ofc change this,
+        // either making it dynamic in test, or rehardcoding it to something else
+        std::size_t unit_size = 1;
+        std::size_t units = rn;
+        
+        
+     
+        // create buffers on the device
+        cl::Buffer ocl_a(*context,CL_MEM_READ_ONLY,rn*sizeof(float)*3);
+        cl::Buffer ocl_b(*context,CL_MEM_READ_WRITE,rn*sizeof(float));
+     
+        
+     
+        //create queue to which we will push commands for the device.
+        cl::CommandQueue queue(*context,default_device);
+     
+        //write arrays A and B to the device
+        queue.enqueueWriteBuffer(ocl_a/*buffer*/,CL_TRUE/*blocking*/, 0/*offset*/,rn*sizeof(float)*3/*size*/,r/*cpu ptr to copy*/);
+        queue.enqueueWriteBuffer(ocl_b/*buffer*/,CL_TRUE/*blocking*/, 0/*offset*/,rn*sizeof(float)/*size*/,r2/*cpu ptr to copy*/);
+
+     
+        
+        //run the kernel
+        cl::make_kernel<cl::Buffer&, cl::Buffer&> density2dFromA(cl::Kernel(*program,"get2dNoiseFromArray"));
+        
+        cl::EnqueueArgs eargs(queue, cl::NDRange(units));
+        //cl::KernelFunctor test(cl::Kernel(*program,"test"),
+        //                                     queue,cl::NullRange,cl::NDRange(units),cl::NullRange);
+        
+      //  assert(rn==16);
+        density2dFromA(eargs, ocl_a, ocl_b);
+
+        //read result C from the device to array C
+        queue.enqueueReadBuffer(ocl_b,CL_TRUE,0,rn*sizeof(float), r2);
         
     }
 

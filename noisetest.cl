@@ -11,7 +11,19 @@ static __constant float4 ONE_F4 = (float4)(1.0f, 1.0f, 1.0f, 1.0f);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
- 
+static __constant float3 CHILD_MIN_OFFSETS[8] =
+{
+	// needs to match the vertMap from Dual Contouring impl
+	(float3)( 0, 0, 0 ), (float3)( 0, 0, 1 ), (float3)( 0, 1, 0 ), (float3)( 0, 1, 1 ), (float3)( 1, 0, 0 ), (float3)( 1, 0, 1 ), (float3)( 1, 1, 0 ), (float3)( 1, 1, 1 )
+};
+
+static __constant int edgevmap[12][2] = 
+{
+	{0,4},{1,5},{2,6},{3,7},	// x-axis 
+	{0,2},{1,3},{4,6},{5,7},	// y-axis
+	{0,1},{2,3},{4,5},{6,7}		// z-axis
+};
+
 
 __constant int P_MASK = 255;
 
@@ -645,6 +657,7 @@ float multifractal2d(
 
 {
 
+   
     int i = 0;
 
     float fi = 0.0f;
@@ -696,7 +709,9 @@ float multifractal2d(
     return value;   
 
 }
+        
 
+ 
  
 
 float turbulence2d(
@@ -1472,7 +1487,39 @@ RidgedMultiFractalArray2d(
 
 float density_function(float4 pos)
 {
-    return multifractal3d(pos, 0.0001, 2.2, 0, 14);
+    return multifractal3d(pos, 0.00001, 2.2, 0, 14);
+}
+
+float density_function2d(float2 pos, int octaves)
+{
+    return ridgedmultifractal2d(pos, 0.00016, 2.2, 0, (int)(octaves));
+    //return ridgedmultifractal2d(pos, 0.001001, 2.2, 0, 17);
+}
+
+float density_function2d1(float2 pos, int octaves)
+{
+    
+    //return ridgedmultifractal2d(pos, 0.006001, 2.2, 0, (int)(octaves));
+    return ridgedmultifractal2d(pos, 0.00716, 2.2, 0, (int)(octaves) - 2);
+}
+
+float densities3d(float3 pos)
+{
+    float density = density_function2d((float2)(pos.x, pos.z), 17);
+    float density1 = density_function2d1((float2)(pos.x*0.7, pos.z*0.7), 17);
+    //float density2 = density_function((float4)(pos.x*10, pos.y*10, pos.z*10, 0));
+
+    float worldYCurr = pos.y;
+
+    float noise = 0.5f + density * 0.5f;
+    float height = noise * 6000;
+    float h0 = height - worldYCurr;
+
+    float noise1 = 0.5f + density1 * 0.5f;
+    float height1 = noise1 * 30;
+    float h01 = height1 - worldYCurr;
+
+    return (h01 * 0.0001) + (h0 * 0.0001);
 }
 
 kernel
@@ -1484,11 +1531,194 @@ test(__global float* output, float worldx, float worldy, float worldz, float res
 
 	int3 size = (int3)(get_global_size(0), get_global_size(1), get_global_size(2));
 
-	float4 position = (float4)((worldx + (coord.x) * res - (4*res)), (worldy + coord.y * res - (4*res)), (worldz + coord.z * res- (4*res)), 0);
+	float3 position = (float3)((worldx + coord.x * res ), (worldy + coord.y * res), (worldz + coord.z * res));
     
 	uint index = ((coord.y * size.x*size.z)) + ((coord.z * size.x)) + (coord.x);
 
-	float value = density_function(position) ;
+    output[index] = densities3d(position);
+}
+
+
+typedef struct corner_cl
+{
+   	float mins[3];
+	int corners;
+} corner_cl_t;
+
+typedef struct zeroCrossings
+{
+   	float positions[6][3];
+    float normals[6][3];
+	int edgeCount;
+} zeroCrossings_t;
+
+typedef struct cl_float3
+{
+   	float x;
+    float y;
+    float z;
+} cl_float3_t;
+
+kernel
+void
+genCorners(__global float* densities, __global corner_cl_t* output, cl_float3_t pos, float res)
+{
+    int3 coord = (int3)(get_global_id(0), get_global_id(1), get_global_id(2));
+	int3 size = (int3)(get_global_size(0), get_global_size(1), get_global_size(2));
+
+    int3 size1 = (int3)(size.x+1, size.y+1, size.z+1);
+
+    float4 worldPos = (float4)((pos.x + coord.x * res ), (pos.y + coord.y * res), (pos.z + coord.z * res), 0);
+
+    uint index = ((coord.y * size.x * size.z)) + ((coord.z * size.x)) + (coord.x);
+
+    output[index].corners = 0;
+    output[index].mins[0] = coord.x;
+    output[index].mins[1] = coord.y;
+    output[index].mins[2] = coord.z;
+	for (int i = 0; i < 8; i++)
+	{
+        float3 pos1 = (float3)(coord.x, coord.y, coord.z) + CHILD_MIN_OFFSETS[i];
+        uint index2 = ((pos1.y * size1.x * size1.z)) + ((pos1.z * size1.x)) + (pos1.x);
+        //float3 cornerPos = (float3)(worldPos.x, worldPos.y, worldPos.z) + CHILD_MIN_OFFSETS[i] * res;
+        //float density = densities3d(cornerPos);
+        float density = densities[index2];
+		int material = density < 0.f ? 1 : 0;
+		output[index].corners |= (material << i);
+	}
+ 
+}
+
+
+
+
+
+float3 calculateSurfaceNormal(float3 pos, float res)
+{
+    float H = 1.f * res;
+    float dx = densities3d(pos + (float3)(H, 0.f, 0.f)) - densities3d(pos - (float3)(H, 0.f, 0.f));
+    float dy = densities3d(pos + (float3)(0.f, H, 0.f)) - densities3d(pos - (float3)(0.f, H, 0.f));
+    float dz = densities3d(pos + (float3)(0.f, 0.f, H)) - densities3d(pos - (float3)(0.f, 0.f, H));
+
+    float3 normal = normalize((float3)(dx, -dy, dz));
+    return normal;
+}
+
+float3 approximateZeroCrossingPosition( float3 p0, float3 p1, float res)
+{
+
+	// approximate the zero crossing by finding the min value along the edge
+	float minValue = 1.f;
+	float t = 0.f;
+	float currentT = 0.f;
+	const int steps = 8;
+	const float increment = (1.f) / (float)steps;
+	while (currentT <= 1)
+	{
+		float3 p = p0 + ((p1 - p0) * currentT);
+		float density = fabs(densities3d(p));
+		if (density < minValue)
+		{
+			minValue = density;
+			t = currentT;
+		}
+
+		currentT += increment;
+	}
+
+	return p0 + ((p1 - p0) * t);
+}
+
+float3 LinearInterp(float3 p1, float p1Val, float3 p2, float p2Val, float value)
+{
+  
+    float t = 1 * (p2Val - value) / (p2Val - p1Val);
+    float sum1 = (p2Val - p1Val);
+    float fSum = (value - p1Val) ;
+    float3 sum = (float3)((p2.x - p1.x) * fSum, (p2.y - p1.y) * fSum, (p2.z - p1.z) * fSum);
+    sum /= sum1;
+    return (float3)(p1.x + sum.x, p1.y + sum.y, p1.z + sum.z);
+}
+
+kernel
+void
+genZeroCrossings(__global corner_cl_t* corners, __global zeroCrossings_t* output, cl_float3_t worldPos, float res)
+{
+    int index = get_global_id(0);
+    //int3 coord = (int3)(get_global_id(0), get_global_id(1), get_global_id(2));
+
+	//int3 size = (int3)(get_global_size(0), get_global_size(1), get_global_size(2));
+
+    
+
+
+    int corner = corners[index].corners;
+    int3 coord = (int3)(corners[index].mins[0], corners[index].mins[1], corners[index].mins[2]);
+
+    uint outIndex = (((coord.y * 33*33)) + ((coord.z * 33)) + (coord.x));
+    int edgeCount = 0;
+
+    for (int i = 0; i < 12 && edgeCount < 6; i++)
+	{
+		int c1 = edgevmap[i][0];
+		int c2 = edgevmap[i][1];
+
+		int m1 = (corner >> c1) & 1;
+		int m2 = (corner >> c2) & 1;
+
+		if ((m1 == 1 && m2 == 1) || (m1 == 0 && m2 == 0))
+		{
+			// no zero crossing on this edge
+			continue;
+		}
+
+        float3 worldPos1 = (float3)((worldPos.x + coord.x * res ), (worldPos.y + coord.y * res), (worldPos.z + coord.z * res));
+
+		const float3 p1 = worldPos1 + CHILD_MIN_OFFSETS[c1] * res;
+		const float3 p2 = worldPos1 + CHILD_MIN_OFFSETS[c2] * res;
+		const float3 p = approximateZeroCrossingPosition(p1, p2, res);
+
+        
+
+        //float val1 = densities3d(p1);
+        //float val2 = densities3d(p2);
+
+        //float3 p = LinearInterp(p1, val1, p2, val2, 0.00001);
+
+        //float3 pos = (((p1+p2)/2)-(float3)(worldPos.x,worldPos.y,worldPos.z)) / res;
+        float3 pos = (p-(float3)(worldPos.x,worldPos.y,worldPos.z)) / res;
+
+        output[outIndex].positions[edgeCount][0] = pos.x;
+        output[outIndex].positions[edgeCount][1] = pos.y;
+        output[outIndex].positions[edgeCount][2] = pos.z;
+
+        float3 surfNorm = calculateSurfaceNormal(p, res);
+
+        output[outIndex].normals[edgeCount][0] = surfNorm.x;
+        output[outIndex].normals[edgeCount][1] = surfNorm.y;
+        output[outIndex].normals[edgeCount][2] = surfNorm.z;
+
+		edgeCount++;
+	}
+
+    output[outIndex].edgeCount = edgeCount;
+
+}
+
+kernel
+void
+get2dNoise(__global float* output, float worldx, float worldy, float res, int level)
+{
+
+    int2 coord = (int2)(get_global_id(0), get_global_id(1));
+
+	int2 size = (int2)(get_global_size(0), get_global_size(1));
+
+	float2 position = (float2)((worldx + (coord.x) * res ), (worldy + coord.y * res ));
+    
+	uint index = ((coord.y * size.x)) + (coord.x);
+
+	float value = density_function2d(position, 17) ;
 
     output[index] = value;
 }
@@ -1519,3 +1749,18 @@ surfaceNormal(__global float* output, float worldx, float worldy, float worldz, 
     output[index+1] = normal.y;
     output[index+2] = normal.z;
 }
+
+kernel
+void
+get2dNoiseFromArray(__global float* input, __global float* output)
+{
+
+    int index = get_global_id(0);
+    float MAX_HEIGHT = 40.0f;
+
+    float noise = 0.5f + density_function2d((float2)(input[index*3], input[index*3+2]), 8) * 0.5f;
+	output[index] =  input[index*3+1] - (MAX_HEIGHT * noise);
+
+
+}
+

@@ -35,6 +35,11 @@ public:
 
     boost::scoped_array<T> m_data;
 
+    T* getDataPtr()
+    {
+        return m_data.get();
+    }
+
     void upsample_yx(TVolume2d<T>& vout)
     {
         size_t vin_size = m_xSize * m_ySize;

@@ -69,10 +69,10 @@
       <WarningLevel>Level3</WarningLevel>
       <PrecompiledHeader>
       </PrecompiledHeader>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);NOMINMAX;MATH_ENABLE_UNCOMMON_OPERATIONS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_VARIADIC_MAX 10;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);NOMINMAX;MATH_ENABLE_UNCOMMON_OPERATIONS</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -83,8 +83,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Chunk.h" />
-    <ClInclude Include="ChunkManager.h" />
     <ClInclude Include="cl.hpp" />
     <ClInclude Include="cubelib\cube.hpp" />
     <ClInclude Include="cubelib\cube.inl.hpp" />
@@ -149,11 +147,14 @@
     <ClInclude Include="noisepp\utils\NoiseUtils.h" />
     <ClInclude Include="noisepp\utils\NoiseWriter.h" />
     <ClInclude Include="ocl.h" />
-    <ClInclude Include="qef.h" />
     <ClInclude Include="tinyxml2\tinyxml2.h" />
     <ClInclude Include="TOctree.h" />
     <ClInclude Include="TQueueLocked.h" />
+    <ClInclude Include="voxel\Chunk.h" />
+    <ClInclude Include="voxel\ChunkManager.h" />
     <ClInclude Include="voxel\McTable.h" />
+    <ClInclude Include="voxel\octree.h" />
+    <ClInclude Include="voxel\qef.h" />
     <ClInclude Include="voxel\TBorderVolume3d.h" />
     <ClInclude Include="voxel\TVolume2d.h" />
     <ClInclude Include="voxel\TVolume3d.h" />
@@ -167,8 +168,6 @@
     <ClInclude Include="xmlnoise\xml_noise_handlers.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Chunk.cpp" />
-    <ClCompile Include="ChunkManager.cpp" />
     <ClCompile Include="GfxApi.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MainClass.cpp" />
@@ -184,8 +183,11 @@
     <ClCompile Include="noisepp\utils\NoiseReader.cpp" />
     <ClCompile Include="noisepp\utils\NoiseSystem.cpp" />
     <ClCompile Include="noisepp\utils\NoiseWriter.cpp" />
-    <ClCompile Include="qef.cpp" />
     <ClCompile Include="tinyxml2\tinyxml2.cpp" />
+    <ClCompile Include="voxel\Chunk.cpp" />
+    <ClCompile Include="voxel\ChunkManager.cpp" />
+    <ClCompile Include="voxel\octree.cpp" />
+    <ClCompile Include="voxel\qef.cpp" />
     <ClCompile Include="xmlnoise\xml_noise2d.cpp" />
     <ClCompile Include="xmlnoise\xml_noise2d_handlers.cpp" />
     <ClCompile Include="xmlnoise\xml_noise3d.cpp" />

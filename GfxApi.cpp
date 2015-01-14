@@ -839,7 +839,7 @@ void Mesh::unbindVAO()
 
 void Mesh::draw(int numIndices, int startIndexOffset)
 {
-    checkValid();
+    //checkValid();
         
     if (m_vao == 0)
         throw std::runtime_error("Can't render the mesh: no VAO");

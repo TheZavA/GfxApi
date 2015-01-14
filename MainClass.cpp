@@ -1,15 +1,17 @@
+
 #include "MainClass.h"
 
 #include "GfxApi.h"
+
+#include "voxel/octree.h"
 
 #include <GLFW/glfw3.h>
 
 #include <boost/make_shared.hpp>
 
-#include "ChunkManager.h"
-#include "Chunk.h"
+#include "voxel/Chunk.h"
 
-
+#include "voxel/ChunkManager.h"
 
 MainClass::MainClass() :
     m_exiting(false),
@@ -67,11 +69,11 @@ int MainClass::initGLEW()
 
 void MainClass::initCamera()
 {
-    m_camera.pos = float3(0, 0, -5);
+    m_camera.pos = float3(0, 4000, -5);
     m_camera.front = float3(0,0,1);
     m_camera.up = float3(0,1,0);
     m_camera.nearPlaneDistance = 1.f;
-    m_camera.farPlaneDistance = 10000.f;
+    m_camera.farPlaneDistance = 40000.f;
 
     m_camera.type = PerspectiveFrustum;
     m_camera.horizontalFov = 1;
@@ -145,11 +147,12 @@ void MainClass::mainLoop()
 {
     init();
 
-   // glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
 
-    m_pChunkMgr = boost::make_shared<ChunkManager>();
-    
+    m_pChunkManager = boost::make_shared<ChunkManager>();
 
+    GfxApi::Texture tex;
+
+    tex.loadBMP("rock.bmp");
 
     while(!m_exiting)
     {
@@ -196,6 +199,16 @@ void MainClass::handleInput(float deltaTime)
         m_camera.pos += deltaTime * moveSpeed * m_camera.up;
     }
 
+    if(m_pInput->keyPressed(GLFW_KEY_O))
+    {
+        glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+    }
+    else if(m_pInput->keyPressed(GLFW_KEY_P))
+    {
+        glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+    }
+   
+
     if(m_pInput->keyPressed(GLFW_KEY_F))
     {
         m_cameraFrozen = m_camera;
@@ -236,13 +249,14 @@ void MainClass::onTick()
     double deltaTime = Clock::MillisecondsSinceD(m_lastTick);
     m_lastTick = Clock::Tick();
 
+
     if(m_bNoCamUpdate)
     {
-        m_pChunkMgr->updateLoDTree(m_cameraFrozen);
+        m_pChunkManager->updateLoDTree(m_cameraFrozen);
     }
     else
     {
-        m_pChunkMgr->updateLoDTree(m_camera);
+        m_pChunkManager->updateLoDTree(m_camera);
     }
 
     if (glfwWindowShouldClose(m_pWindow))
@@ -272,19 +286,48 @@ void MainClass::onTick()
         m_graphics.clear(true, true, true, 0, 0, 0);
     }
 
-
-
     if(m_bShowTree)
-        m_pChunkMgr->renderBounds(m_camera);
- 
+    {
+        m_pChunkManager->renderBounds(m_camera);
+    }
+
+    for(auto& node : m_meshList)
+    {
+        node->m_pMesh->applyVAO();
+        node->m_pMesh->m_sp->use();
+
+        int worldLocation = node->m_pMesh->m_sp->getUniformLocation("world");
+        assert(worldLocation != -1);
+        int worldViewProjLocation = node->m_pMesh->m_sp->getUniformLocation("worldViewProj");
+        assert(worldViewProjLocation != -1);
+            
+        float4x4 world = node->m_xForm;
+        node->m_pMesh->m_sp->setFloat4x4(worldLocation, world);
+        node->m_pMesh->m_sp->setFloat4x4(worldViewProjLocation, m_camera.ViewProjMatrix() );
+            
+        node->m_pMesh->draw();
+    }
 
 
-    for(auto& chunk : m_pChunkMgr->m_visibles)
+
+    for(auto& chunk : m_pChunkManager->m_visibles)
     {
 
         if(chunk->m_pMesh && !m_bHideTerrain)
         {
-            if(m_camera.Intersects(chunk->m_bounds))
+            bool visibleChunk = false;
+
+            //if(m_bNoCamUpdate)
+            //{
+            //    visibleChunk = m_cameraFrozen.Intersects(chunk->m_bounds);
+            //}
+            //else
+            //{
+            //   visibleChunk = m_camera.Intersects(chunk->m_bounds);
+            //}
+
+           // if(visibleChunk)
+           // if(chunk->m_pTree->getLevel() > 2)
             {
                 double scale = (1.0f/ChunkManager::CHUNK_SIZE) * (chunk->m_bounds.MaxX() - chunk->m_bounds.MinX());
                
@@ -295,11 +338,11 @@ void MainClass::onTick()
                                                                                           float3(0, 0, 0));
                 node->m_pMesh->applyVAO();
 
-                if(m_pChunkMgr->m_pLastShader != node->m_pMesh->m_sp)
-                {
+            /*    if(m_pChunkManager->m_pLastShader != node->m_pMesh->m_sp)
+                {*/
                     node->m_pMesh->m_sp->use();
-                    m_pChunkMgr->m_pLastShader = node->m_pMesh->m_sp;
-                }
+                /*    m_pChunkManager->m_pLastShader = node->m_pMesh->m_sp;
+                }*/
 
                 int worldLocation = node->m_pMesh->m_sp->getUniformLocation("world");
                 assert(worldLocation != -1);
@@ -318,10 +361,6 @@ void MainClass::onTick()
 
     GfxApi::Mesh::unbindVAO();
 
-    
-
-    
-    
 
     // Swap front and back buffers 
     glfwSwapBuffers(m_pWindow);

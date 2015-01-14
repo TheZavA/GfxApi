@@ -11,7 +11,7 @@ class TOctree
 public:
     typedef TOctree<T> ChildType;
 
-    typedef boost::array<boost::scoped_ptr<ChildType>, 8> ChildrenType;
+    typedef boost::array<boost::shared_ptr<ChildType>, 8> ChildrenType;
 
     TOctree(TOctree* root, 
             TOctree* parent, 
@@ -105,9 +105,9 @@ public:
         return m_level;
     }
 
-    ChildType& getChild(const cube::corner_t& corner)
+    boost::shared_ptr<ChildType> getChild(const cube::corner_t& corner)
     {
-        return *(*m_children)[corner.index()].get();
+        return (*m_children)[corner.index()];
     }
 
     ChildrenType& getChildren()
@@ -132,7 +132,7 @@ public:
         m_children.reset();
     }
 
-    boost::scoped_ptr< ChildrenType > m_children;
+    boost::shared_ptr< ChildrenType > m_children;
 
 private:
     TOctree<T>* m_pRoot;

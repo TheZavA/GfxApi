@@ -12,25 +12,27 @@
 // ----------------------------------------------------------------------------
 
 
-void GenerateVertexIndices(OctreeNode* node, VertexBuffer& vertexBuffer)
+void GenerateVertexIndices(int32_t node_index, VertexBuffer& vertexBuffer, std::vector<OctreeNode>& node_list)
 {
-	if (!node)
+	if (node_index == -1)
 	{
 		return;
 	}
+
+    OctreeNode* node = &node_list[node_index];
 
 	if (node->type != Node_Leaf)
 	{
 		for (int i = 0; i < 8; i++)
 		{
-            if(node->children[i])
-			    GenerateVertexIndices(node->children[i], vertexBuffer);
+            if(node->childrenIdx[i] != -1)
+			    GenerateVertexIndices(node->childrenIdx[i], vertexBuffer, node_list);
 		}
 	}
 
 	if (node->type != Node_Internal)
 	{
-		OctreeDrawInfo* d = node->drawInfo;
+		OctreeDrawInfo* d = &node->drawInfo;
 		if (!d)
 		{
 			printf("Error! Could not add vertex!\n");
@@ -44,7 +46,7 @@ void GenerateVertexIndices(OctreeNode* node, VertexBuffer& vertexBuffer)
 
 // ----------------------------------------------------------------------------
 
-void ContourProcessEdge(OctreeNode* node[4], int dir, IndexBuffer& indexBuffer)
+void ContourProcessEdge(int32_t node_index[4], int dir, IndexBuffer& indexBuffer, std::vector<OctreeNode>& node_list)
 {
 	int minSize = 1000000;		// arbitrary big number
 	int minIndex = 0;
@@ -58,17 +60,17 @@ void ContourProcessEdge(OctreeNode* node[4], int dir, IndexBuffer& indexBuffer)
 		const int c1 = edgevmap[edge][0];
 		const int c2 = edgevmap[edge][1];
 
-		const int m1 = (node[i]->drawInfo->corners >> c1) & 1;
-		const int m2 = (node[i]->drawInfo->corners >> c2) & 1;
+		const int m1 = (node_list[node_index[i]].drawInfo.corners >> c1) & 1;
+		const int m2 = (node_list[node_index[i]].drawInfo.corners >> c2) & 1;
 
-		if (node[i]->size < minSize)
+		if (node_list[node_index[i]].size < minSize)
 		{
-			minSize = node[i]->size;
+			minSize = node_list[node_index[i]].size;
 			minIndex = i;
 			flip = m1 != MATERIAL_AIR; 
 		}
 
-		indices[i] = node[i]->drawInfo->index;
+		indices[i] = node_list[node_index[i]].drawInfo.index;
 
 		signChange[i] = 
 			(m1 == MATERIAL_AIR && m2 != MATERIAL_AIR) ||
@@ -102,25 +104,25 @@ void ContourProcessEdge(OctreeNode* node[4], int dir, IndexBuffer& indexBuffer)
 
 // ----------------------------------------------------------------------------
 
-void ContourEdgeProc(OctreeNode* node[4], int dir, IndexBuffer& indexBuffer)
+void ContourEdgeProc(int32_t node_index[4], int dir, IndexBuffer& indexBuffer, std::vector<OctreeNode>& node_list)
 {
-	if (!node[0] || !node[1] || !node[2] || !node[3])
+	if (node_index[0] == -1 || node_index[1] == -1 || node_index[2] == -1 || node_index[3] == -1)
 	{
 		return;
 	}
 
-	if (node[0]->type != Node_Internal &&
-		node[1]->type != Node_Internal &&
-		node[2]->type != Node_Internal &&
-		node[3]->type != Node_Internal)
+	if (node_list[node_index[0]].type != Node_Internal &&
+		node_list[node_index[1]].type != Node_Internal &&
+		node_list[node_index[2]].type != Node_Internal &&
+		node_list[node_index[3]].type != Node_Internal)
 	{
-		ContourProcessEdge(node, dir, indexBuffer);
+		ContourProcessEdge(node_index, dir, indexBuffer, node_list);
 	}
 	else
 	{
 		for (int i = 0; i < 2; i++)
 		{
-			OctreeNode* edgeNodes[4];
+			int32_t edgeNodes[4];
 			const int c[4] = 
 			{
 				edgeProcEdgeMask[dir][i][0],
@@ -131,36 +133,39 @@ void ContourEdgeProc(OctreeNode* node[4], int dir, IndexBuffer& indexBuffer)
 
 			for (int j = 0; j < 4; j++)
 			{
-				if (node[j]->type == Node_Leaf || node[j]->type == Node_Psuedo)
+				if (node_list[node_index[j]].type == Node_Leaf || node_list[node_index[j]].type == Node_Psuedo)
 				{
-					edgeNodes[j] = node[j];
+					edgeNodes[j] = node_index[j];
 				}
 				else
 				{
-					edgeNodes[j] = node[j]->children[c[j]];
+					edgeNodes[j] = node_list[node_index[j]].childrenIdx[c[j]];
 				}
 			}
 
-			ContourEdgeProc(edgeNodes, edgeProcEdgeMask[dir][i][4], indexBuffer);
+			ContourEdgeProc(edgeNodes, edgeProcEdgeMask[dir][i][4], indexBuffer, node_list);
 		}
 	}
 }
 
 // ----------------------------------------------------------------------------
 
-void ContourFaceProc(OctreeNode* node[2], int dir, IndexBuffer& indexBuffer)
+void ContourFaceProc(int32_t node_index[2], int dir, IndexBuffer& indexBuffer, std::vector<OctreeNode>& node_list)
 {
-	if (!node[0] || !node[1])
+	if (node_index[0] == -1 || node_index[1] == -1)
 	{
 		return;
 	}
 
-	if (node[0]->type == Node_Internal || 
-		node[1]->type == Node_Internal)
+    OctreeNode* node0 = &node_list[node_index[0]];
+    OctreeNode* node1 = &node_list[node_index[1]];
+
+	if (node0->type == Node_Internal || 
+		node1->type == Node_Internal)
 	{
 		for (int i = 0; i < 4; i++)
 		{
-			OctreeNode* faceNodes[2];
+			int32_t faceNodes[2];
 			const int c[2] = 
 			{
 				faceProcFaceMask[dir][i][0], 
@@ -169,17 +174,17 @@ void ContourFaceProc(OctreeNode* node[2], int dir, IndexBuffer& indexBuffer)
 
 			for (int j = 0; j < 2; j++)
 			{
-				if (node[j]->type != Node_Internal)
+				if (node_list[node_index[j]].type != Node_Internal)
 				{
-					faceNodes[j] = node[j];
+					faceNodes[j] = node_index[j];
 				}
 				else
 				{
-					faceNodes[j] = node[j]->children[c[j]];
+					faceNodes[j] = node_list[node_index[j]].childrenIdx[c[j]];
 				}
 			}
 
-			ContourFaceProc(faceNodes, faceProcFaceMask[dir][i][2], indexBuffer);
+			ContourFaceProc(faceNodes, faceProcFaceMask[dir][i][2], indexBuffer, node_list);
 		}
 		
 		const int orders[2][4] =
@@ -189,7 +194,7 @@ void ContourFaceProc(OctreeNode* node[2], int dir, IndexBuffer& indexBuffer)
 		};
 		for (int i = 0; i < 4; i++)
 		{
-			OctreeNode* edgeNodes[4];
+			int32_t edgeNodes[4];
 			const int c[4] =
 			{
 				faceProcEdgeMask[dir][i][1],
@@ -201,52 +206,53 @@ void ContourFaceProc(OctreeNode* node[2], int dir, IndexBuffer& indexBuffer)
 			const int* order = orders[faceProcEdgeMask[dir][i][0]];
 			for (int j = 0; j < 4; j++)
 			{
-				if (node[order[j]]->type == Node_Leaf ||
-					node[order[j]]->type == Node_Psuedo)
+				if (node_list[node_index[order[j]]].type == Node_Leaf ||
+					node_list[node_index[order[j]]].type == Node_Psuedo)
 				{
-					edgeNodes[j] = node[order[j]];
+					edgeNodes[j] = node_index[order[j]];
 				}
 				else
 				{
-					edgeNodes[j] = node[order[j]]->children[c[j]];
+					edgeNodes[j] = node_list[node_index[order[j]]].childrenIdx[c[j]];
 				}
 			}
 
-			ContourEdgeProc(edgeNodes, faceProcEdgeMask[dir][i][5], indexBuffer);
+			ContourEdgeProc(edgeNodes, faceProcEdgeMask[dir][i][5], indexBuffer, node_list);
 		}
 	}
 }
 
-// ----------------------------------------------------------------------------
 
-void ContourCellProc(OctreeNode* node, IndexBuffer& indexBuffer)
+void ContourCellProc(int32_t node_index, IndexBuffer& indexBuffer, std::vector<OctreeNode>& node_list)
 {
-	if (node == NULL)
+	if (node_index == -1)
 	{
 		return;
 	}
+
+    OctreeNode* node = &node_list[node_index];
 
 	if (node->type == Node_Internal)
 	{
 		for (int i = 0; i < 8; i++)
 		{
-			ContourCellProc(node->children[i], indexBuffer);
+			ContourCellProc(node->childrenIdx[i], indexBuffer, node_list);
 		}
 
 		for (int i = 0; i < 12; i++)
 		{
-			OctreeNode* faceNodes[2];
+			int32_t faceNodes[2];
 			const int c[2] = { cellProcFaceMask[i][0], cellProcFaceMask[i][1] };
 			
-			faceNodes[0] = node->children[c[0]];
-			faceNodes[1] = node->children[c[1]];
+			faceNodes[0] = node->childrenIdx[c[0]];
+			faceNodes[1] = node->childrenIdx[c[1]];
 
-			ContourFaceProc(faceNodes, cellProcFaceMask[i][2], indexBuffer);
+			ContourFaceProc(faceNodes, cellProcFaceMask[i][2], indexBuffer, node_list);
 		}
 
 		for (int i = 0; i < 6; i++)
 		{
-			OctreeNode* edgeNodes[4];
+			int32_t edgeNodes[4];
 			const int c[4] = 
 			{
 				cellProcEdgeMask[i][0],
@@ -257,10 +263,10 @@ void ContourCellProc(OctreeNode* node, IndexBuffer& indexBuffer)
 
 			for (int j = 0; j < 4; j++)
 			{
-				edgeNodes[j] = node->children[c[j]];
+				edgeNodes[j] = node->childrenIdx[c[j]];
 			}
 
-			ContourEdgeProc(edgeNodes, cellProcEdgeMask[i][4], indexBuffer);
+			ContourEdgeProc(edgeNodes, cellProcEdgeMask[i][4], indexBuffer, node_list);
 		}
 	}
 }
@@ -268,9 +274,9 @@ void ContourCellProc(OctreeNode* node, IndexBuffer& indexBuffer)
 
 // ----------------------------------------------------------------------------
 
-void GenerateMeshFromOctree(OctreeNode* node, VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer)
+void GenerateMeshFromOctree(int32_t node_index, VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, std::vector<OctreeNode>& node_list)
 {
-	if (!node)
+	if (node_index == -1)
 	{
 		return;
 	}
@@ -278,30 +284,8 @@ void GenerateMeshFromOctree(OctreeNode* node, VertexBuffer& vertexBuffer, IndexB
 	vertexBuffer.clear();
 	indexBuffer.clear();
 
-	GenerateVertexIndices(node, vertexBuffer);
-	ContourCellProc(node, indexBuffer);
-}
-
-// -------------------------------------------------------------------------------
-
-void DestroyOctree(OctreeNode* node)
-{
-	if (!node)
-	{
-		return;
-	}
-
-	for (int i = 0; i < 8; i++)
-	{
-		DestroyOctree(node->children[i]);
-	}
-
-	if (node->drawInfo)
-	{
-		delete node->drawInfo;
-	}
-
-	delete node;
+	GenerateVertexIndices(node_index, vertexBuffer, node_list);
+	ContourCellProc(node_index, indexBuffer, node_list);
 }
 
 // -------------------------------------------------------------------------------

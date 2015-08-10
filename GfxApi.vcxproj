@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -14,6 +14,7 @@
     <ProjectGuid>{9C5BD359-5BA0-4EA0-81FD-E73ABEBD2388}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>GfxApi</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -41,14 +42,14 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>E:\cuda_toolkit\include;E:\OpenGLProjects\lib;F:\OglProject\GfxApi\tinyxml2;F:\OglProject\GfxApi\noisepp\threadpp;F:\OglProject\GfxApi\noisepp\core;E:\OpenGLProjects\lib\glew-1.9.0\include;E:\OpenGLProjects\lib\glfw-2.7.7\include;C:\Users\skolm\Desktop\boost_1_55_0;$(IncludePath)</IncludePath>
+    <IncludePath>E:\OpenGLProjects\OpenGI\include;E:\cuda_toolkit\include;E:\OpenGLProjects\lib;F:\OglProject\GfxApi\tinyxml2;F:\OglProject\GfxApi\noisepp\threadpp;F:\OglProject\GfxApi\noisepp\core;E:\OpenGLProjects\lib\glew-1.9.0\include;E:\OpenGLProjects\lib\glfw-2.7.7\include;H:\kram von desktop\boost_1_55_0;$(IncludePath)</IncludePath>
     <ReferencePath>$(ReferencePath)</ReferencePath>
-    <LibraryPath>E:\cuda_toolkit\lib\Win32;E:\OpenGLProjects\lib\glew-1.9.0\lib\Release\Win32;E:\OpenGLProjects\lib\glfw-2.7.7\lib-msvc110;E:\OpenGLProjects\lib\mgl\mgl\Debug;C:\Users\skolm\Desktop\boost_1_55_0\stage\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>E:\OpenGLProjects\OpenGI\lib;E:\cuda_toolkit\lib\Win32;E:\OpenGLProjects\lib\glew-1.9.0\lib\Release\Win32;E:\OpenGLProjects\lib\glfw-2.7.7\lib-msvc110;E:\OpenGLProjects\lib\mgl\mgl\Debug;H:\kram von desktop\boost_1_55_0\stage\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>E:\cuda_toolkit\include;E:\OpenGLProjects\lib;F:\OglProject\GfxApi\tinyxml2;F:\OglProject\GfxApi\noisepp\threadpp;F:\OglProject\GfxApi\noisepp\core;E:\OpenGLProjects\lib\glew-1.9.0\include;E:\OpenGLProjects\lib\glfw-2.7.7\include;C:\Users\skolm\Desktop\boost_1_55_0;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(IncludePath)</IncludePath>
-    <LibraryPath>E:\cuda_toolkit\lib\Win32;E:\OpenGLProjects\lib\glew-1.9.0\lib\Release\Win32;E:\OpenGLProjects\lib\glfw-2.7.7\lib-msvc110;E:\OpenGLProjects\lib\mgl\mgl\Release;C:\Users\skolm\Desktop\boost_1_55_0\stage\lib;$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSDK_LibraryPath_x86)</LibraryPath>
+    <IncludePath>E:\OpenGLProjects\OpenGI\include;E:\cuda_toolkit\include;E:\OpenGLProjects\lib;F:\OglProject\GfxApi\tinyxml2;F:\OglProject\GfxApi\noisepp\threadpp;F:\OglProject\GfxApi\noisepp\core;E:\OpenGLProjects\lib\glew-1.9.0\include;E:\OpenGLProjects\lib\glfw-2.7.7\include;H:\kram von desktop\boost_1_55_0;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(IncludePath)</IncludePath>
+    <LibraryPath>E:\OpenGLProjects\OpenGI\lib;E:\cuda_toolkit\lib\Win32;E:\OpenGLProjects\lib\glew-1.9.0\lib\Release\Win32;E:\OpenGLProjects\lib\glfw-2.7.7\lib-msvc110;E:\OpenGLProjects\lib\mgl\mgl\Release;H:\kram von desktop\boost_1_55_0\stage\lib;$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSDK_LibraryPath_x86)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -72,7 +73,7 @@
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_VARIADIC_MAX 10;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);NOMINMAX;MATH_ENABLE_UNCOMMON_OPERATIONS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);NOMINMAX;MATH_ENABLE_UNCOMMON_OPERATIONS</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -80,6 +81,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>OpenCL.lib;mgl.lib;glfw3.lib;glew32s.lib;glew32.lib;opengl32.lib;glu32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <Profile>true</Profile>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -89,115 +91,43 @@
     <ClInclude Include="cubelib\logic_utility.hpp" />
     <ClInclude Include="GfxApi.h" />
     <ClInclude Include="MainClass.h" />
-    <ClInclude Include="noisepp\core\Noise.h" />
-    <ClInclude Include="noisepp\core\NoiseAbsolute.h" />
-    <ClInclude Include="noisepp\core\NoiseAddition.h" />
-    <ClInclude Include="noisepp\core\NoiseBillow.h" />
-    <ClInclude Include="noisepp\core\NoiseBlend.h" />
-    <ClInclude Include="noisepp\core\NoiseCheckerboard.h" />
-    <ClInclude Include="noisepp\core\NoiseClamp.h" />
-    <ClInclude Include="noisepp\core\NoiseConfig.h" />
-    <ClInclude Include="noisepp\core\NoiseConstant.h" />
-    <ClInclude Include="noisepp\core\NoiseCurve.h" />
-    <ClInclude Include="noisepp\core\NoiseExceptions.h" />
-    <ClInclude Include="noisepp\core\NoiseExponent.h" />
-    <ClInclude Include="noisepp\core\NoiseGenerator.h" />
-    <ClInclude Include="noisepp\core\NoiseInverseMul.h" />
-    <ClInclude Include="noisepp\core\NoiseInvert.h" />
-    <ClInclude Include="noisepp\core\NoiseMath.h" />
-    <ClInclude Include="noisepp\core\NoiseMaximum.h" />
-    <ClInclude Include="noisepp\core\NoiseMinimum.h" />
-    <ClInclude Include="noisepp\core\NoiseModule.h" />
-    <ClInclude Include="noisepp\core\NoiseMultiply.h" />
-    <ClInclude Include="noisepp\core\NoisePerlin.h" />
-    <ClInclude Include="noisepp\core\NoisePipeline.h" />
-    <ClInclude Include="noisepp\core\NoisePipelineJobs.h" />
-    <ClInclude Include="noisepp\core\NoisePlatform.h" />
-    <ClInclude Include="noisepp\core\NoisePower.h" />
-    <ClInclude Include="noisepp\core\NoisePrerequisites.h" />
-    <ClInclude Include="noisepp\core\NoiseRidgedMulti.h" />
-    <ClInclude Include="noisepp\core\NoiseScaleBias.h" />
-    <ClInclude Include="noisepp\core\NoiseScalePoint.h" />
-    <ClInclude Include="noisepp\core\NoiseSelect.h" />
-    <ClInclude Include="noisepp\core\NoiseStdHeaders.h" />
-    <ClInclude Include="noisepp\core\NoiseTerrace.h" />
-    <ClInclude Include="noisepp\core\NoiseThreadedPipeline.h" />
-    <ClInclude Include="noisepp\core\NoiseTranslatePoint.h" />
-    <ClInclude Include="noisepp\core\NoiseTurbulence.h" />
-    <ClInclude Include="noisepp\core\NoiseVectorTable.h" />
-    <ClInclude Include="noisepp\core\NoiseVoronoi.h" />
-    <ClInclude Include="noisepp\core\NoiseY.h" />
-    <ClInclude Include="noisepp\threadpp\Thread.h" />
-    <ClInclude Include="noisepp\threadpp\ThreadCondition.h" />
-    <ClInclude Include="noisepp\threadpp\ThreadImplementation.h" />
-    <ClInclude Include="noisepp\threadpp\ThreadMutex.h" />
-    <ClInclude Include="noisepp\threadpp\ThreadPlatform.h" />
-    <ClInclude Include="noisepp\threadpp\ThreadPrerequisites.h" />
-    <ClInclude Include="noisepp\threadpp\ThreadStdHeaders.h" />
-    <ClInclude Include="noisepp\utils\NoiseBuilders.h" />
-    <ClInclude Include="noisepp\utils\NoiseColourValue.h" />
-    <ClInclude Include="noisepp\utils\NoiseEndianUtils.h" />
-    <ClInclude Include="noisepp\utils\NoiseGradientRenderer.h" />
-    <ClInclude Include="noisepp\utils\NoiseImage.h" />
-    <ClInclude Include="noisepp\utils\NoiseInStream.h" />
-    <ClInclude Include="noisepp\utils\NoiseJobQueue.h" />
-    <ClInclude Include="noisepp\utils\NoiseOutStream.h" />
-    <ClInclude Include="noisepp\utils\NoiseReader.h" />
-    <ClInclude Include="noisepp\utils\NoiseSystem.h" />
-    <ClInclude Include="noisepp\utils\NoiseUtils.h" />
-    <ClInclude Include="noisepp\utils\NoiseWriter.h" />
     <ClInclude Include="ocl.h" />
     <ClInclude Include="tinyxml2\tinyxml2.h" />
     <ClInclude Include="TOctree.h" />
     <ClInclude Include="TQueueLocked.h" />
     <ClInclude Include="voxel\Chunk.h" />
     <ClInclude Include="voxel\ChunkManager.h" />
-    <ClInclude Include="voxel\McTable.h" />
     <ClInclude Include="voxel\octree.h" />
     <ClInclude Include="voxel\qef.h" />
+    <ClInclude Include="voxel\Clipmap.h" />
+    <ClInclude Include="voxel\svd.h" />
     <ClInclude Include="voxel\TBorderVolume3d.h" />
     <ClInclude Include="voxel\TVolume2d.h" />
     <ClInclude Include="voxel\TVolume3d.h" />
     <ClInclude Include="voxel\TVolumePool.h" />
-    <ClInclude Include="xmlnoise\xml_noise2d.hpp" />
-    <ClInclude Include="xmlnoise\xml_noise2d_handlers.hpp" />
-    <ClInclude Include="xmlnoise\xml_noise3d.hpp" />
-    <ClInclude Include="xmlnoise\xml_noise3d_handlers.hpp" />
-    <ClInclude Include="xmlnoise\xml_noise_decls.hpp" />
-    <ClInclude Include="xmlnoise\xml_noise_error.hpp" />
-    <ClInclude Include="xmlnoise\xml_noise_handlers.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GfxApi.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MainClass.cpp" />
-    <ClCompile Include="noisepp\utils\NoiseBuilders.cpp" />
-    <ClCompile Include="noisepp\utils\NoiseColourValue.cpp" />
-    <ClCompile Include="noisepp\utils\NoiseEndianUtils.cpp" />
-    <ClCompile Include="noisepp\utils\NoiseGradientRenderer.cpp" />
-    <ClCompile Include="noisepp\utils\NoiseImage.cpp" />
-    <ClCompile Include="noisepp\utils\NoiseInStream.cpp" />
-    <ClCompile Include="noisepp\utils\NoiseJobQueue.cpp" />
-    <ClCompile Include="noisepp\utils\NoiseModules.cpp" />
-    <ClCompile Include="noisepp\utils\NoiseOutStream.cpp" />
-    <ClCompile Include="noisepp\utils\NoiseReader.cpp" />
-    <ClCompile Include="noisepp\utils\NoiseSystem.cpp" />
-    <ClCompile Include="noisepp\utils\NoiseWriter.cpp" />
     <ClCompile Include="tinyxml2\tinyxml2.cpp" />
     <ClCompile Include="voxel\Chunk.cpp" />
     <ClCompile Include="voxel\ChunkManager.cpp" />
     <ClCompile Include="voxel\octree.cpp" />
     <ClCompile Include="voxel\qef.cpp" />
-    <ClCompile Include="xmlnoise\xml_noise2d.cpp" />
-    <ClCompile Include="xmlnoise\xml_noise2d_handlers.cpp" />
-    <ClCompile Include="xmlnoise\xml_noise3d.cpp" />
-    <ClCompile Include="xmlnoise\xml_noise3d_handlers.cpp" />
-    <ClCompile Include="xmlnoise\xml_noise_handlers.cpp" />
+    <ClCompile Include="voxel\Clipmap.cpp" />
+    <ClCompile Include="voxel\svd.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="noise.cl" />
+    <None Include="..\OpenGI\lib\OpenGI.exp" />
+    <None Include="chunk_kernel.cl" />
     <None Include="noisetest.cl" />
-    <None Include="testproject.cl" />
+    <None Include="scan_kernel.cl" />
+    <None Include="shader\chunk.ps" />
+    <None Include="shader\chunk.vs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="..\OpenGI\lib\OpenGI.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

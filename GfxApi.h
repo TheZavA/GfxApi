@@ -254,7 +254,7 @@ public:
     ~Texture(void);
 
     void loadDDS(const char * imagepath);
-    void loadBMP(const char * imagepath);
+    void loadBMP(const char * imagepath, int index);
 
     GLuint getHandle() const;
 
@@ -307,8 +307,17 @@ public:
     int getUniformLocation(const char* name);
         
     void use();
+    void bindTexture(int index, int textureHandle, const std::string& samplerName);
+
+    void setUniform(const float4x4& matrix, const std::string& name);
+    void setUniform(const float value, const std::string& name);
+    void setUniform(const int value, const std::string& name);
+    void setUniform(const float v1, const float v2, const float v3, const std::string& name);
 
     static void setFloat4x4(int parameterIndex, const float4x4& matrix);
+    static void setFloat(int parameterIndex, const float value);
+    static void setInt(int parameterIndex, const int value);
+    static void setFloat3(int parameterIndex, const float v1, const float v2, const float v3);
 
 
     GLuint m_programHandle;

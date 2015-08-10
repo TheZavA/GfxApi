@@ -24,8 +24,8 @@
 */
 
 
-#include "cubelib/cube.hpp"
-#include "cubelib/logic_utility.hpp"
+#include "cube.hpp"
+#include "logic_utility.hpp"
 
 #include <vector>
 #include <boost/range/irange.hpp>
@@ -680,6 +680,26 @@ edge_t(const corner_t& a, const corner_t& b)
 }
 
 CUBE_INLINE
+edge_t::
+edge_t(const corner_t& a, const corner_t& b, uint8_t index)
+  : mcorners(detail::make_edge_corners(a,b))
+  , mindex(index)
+{
+  BOOST_ASSERT(mcorners.front().index() < mcorners.back().index());
+  BOOST_ASSERT(mcorners.front() != mcorners.back());
+  BOOST_ASSERT(mcorners.front().adjacent_set().contains(mcorners.back()));
+  BOOST_ASSERT(mcorners.back().adjacent_set().contains(mcorners.front()));
+}
+
+CUBE_INLINE 
+uint8_t 
+edge_t::
+index() const
+{
+    return mindex;
+}
+
+CUBE_INLINE
 const boost::array<corner_t, 2>&
 edge_t::
 corners() const
@@ -710,21 +730,22 @@ all()
   
   static const boost::array<edge_t, 12> result = 
   {{
-    edge_t(rtf, rtf.adjacent()[0]),
-    edge_t(rtf, rtf.adjacent()[1]),
-    edge_t(rtf, rtf.adjacent()[2]),
     
-    edge_t(rbn, rbn.adjacent()[0]),
-    edge_t(rbn, rbn.adjacent()[1]),
-    edge_t(rbn, rbn.adjacent()[2]),
-    
-    edge_t(lbf, lbf.adjacent()[0]),
-    edge_t(lbf, lbf.adjacent()[1]),
-    edge_t(lbf, lbf.adjacent()[2]),
-    
-    edge_t(lbn, lbn.adjacent()[0]),
-    edge_t(lbn, lbn.adjacent()[1]),
-    edge_t(lbn, lbn.adjacent()[2])
+    edge_t(rbn, rbn.adjacent()[0], 0),
+    edge_t(lbf, lbf.adjacent()[2], 1),
+    edge_t(lbn, lbn.adjacent()[1], 2),
+
+    edge_t(rtf, rtf.adjacent()[0], 3),
+    edge_t(rbn, rbn.adjacent()[1], 4),
+    edge_t(rbn, rbn.adjacent()[2], 5),
+
+    edge_t(rtf, rtf.adjacent()[1], 6),
+    edge_t(lbf, lbf.adjacent()[1], 7),
+    edge_t(lbf, lbf.adjacent()[0], 8),
+
+    edge_t(rtf, rtf.adjacent()[2], 9),
+    edge_t(lbn, lbn.adjacent()[0], 10),
+    edge_t(lbn, lbn.adjacent()[2], 11)
   }};
   
   return result;

@@ -16,6 +16,10 @@
 
 
 class Chunk;
+class Ring;
+class Clipmap;
+
+static const float LOD_MIN_RES = 1.0f;
 
 namespace GfxApi {
 class ShaderProgram;
@@ -26,43 +30,24 @@ struct ocl_t;
 class ChunkManager
 {
 public:
-    ChunkManager(void);
+    ChunkManager(Frustum& camera);
     ~ChunkManager(void);
 
-    typedef TOctree<boost::shared_ptr<Chunk>> ChunkTree;
-
     static const int CHUNK_SIZE = 32;
-    static const int MAX_LOD_LEVEL = 15;
+    static const int MAX_LOD_LEVEL = 7;
+    
 
     boost::shared_ptr<ocl_t> m_ocl;
 
     void render(void);
 
-    void initTree(boost::shared_ptr<ChunkTree> pChild);
-    void initTree1(boost::shared_ptr<ChunkTree> pChild);
-    void initTreeOnly(boost::shared_ptr<ChunkTree> pChild);
-
-    bool allChildsGenerated(boost::shared_ptr<ChunkTree> pChild);
-
-    void updateVisibles(boost::shared_ptr<ChunkTree> pTree);
-
-    void updateLoDTree(Frustum& camera);
-
-    bool isAcceptablePixelError(float3& cameraPos, ChunkTree& tree);
-
     void chunkLoaderThread();
 
-    void renderBounds(const Frustum& cameraPos);
-
-    typedef std::set< boost::shared_ptr<Chunk> > VisibleList;
-
-    bool isBatchDone(VisibleList& batches);
+    void resetClipmap(Frustum& camera);
 
     TQueueLocked<boost::shared_ptr<Chunk>> m_chunkGeneratorQueue;
 
-    TQueueLocked<std::vector<boost::shared_ptr<Chunk>>> m_chunkGeneratorBatchQueue;
-
-    TQueueLocked<std::vector<boost::shared_ptr<Chunk>>> m_chunkGeneratorBatchReturnQueue;
+    TQueueLocked<boost::shared_ptr<Ring>> m_ring_generator_queue;
 
     std::vector< boost::shared_ptr<Chunk> > m_chunkList;
 
@@ -70,12 +55,7 @@ public:
 
     boost::shared_ptr<GfxApi::ShaderProgram> m_pLastShader;
 
-    boost::shared_ptr< ChunkTree > m_pOctTree;
-
-    VisibleList m_visibles;
- 
-
-
+    boost::shared_ptr<Clipmap> m_pClipmap;
 
 };
 

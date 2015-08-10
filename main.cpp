@@ -3,12 +3,15 @@
 
 #include "MainClass.h"
 
+MainClass* g_pMainClass;
+
 int main(int argc, char *argv[]) 
 {
+
     try 
     {
-        MainClass* mainApp = new MainClass();
-        mainApp->mainLoop();
+        MainClass* g_pMainClass = new MainClass();
+        g_pMainClass->mainLoop();
     } 
     catch (const std::exception& e)
     {

@@ -47,6 +47,9 @@ public:
 
     void handleInput(float deltaTime);
 
+    Frustum& getCamera();
+    Frustum* getCameraPtr();
+
 private:
 
     GLFWwindow* m_pWindow;
@@ -65,9 +68,14 @@ private:
 
     bool m_bNoCamUpdate;
 
-    bool m_bHideTerrain;
 
     bool m_bShowTree;
+
+    bool m_bHideSeams;
+
+    bool m_bHideTerrain;
+
+    bool m_bDoClipmapUpdate;
 
     boost::shared_ptr<GfxApi::Input> m_pInput;
 

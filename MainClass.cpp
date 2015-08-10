@@ -13,12 +13,16 @@
 
 #include "voxel/ChunkManager.h"
 
+#include "voxel/Clipmap.h"
+
 MainClass::MainClass() :
     m_exiting(false),
     m_windowTitle("GfxApi"),
     m_bNoCamUpdate(false),
     m_bHideTerrain(false),
-    m_bShowTree(false)
+    m_bShowTree(false),
+    m_bDoClipmapUpdate(true),
+    m_bHideSeams(false)
 {
 
 }
@@ -69,7 +73,7 @@ int MainClass::initGLEW()
 
 void MainClass::initCamera()
 {
-    m_camera.pos = float3(0, 4000, -5);
+    m_camera.pos = float3(-3631,1050,5690);
     m_camera.front = float3(0,0,1);
     m_camera.up = float3(0,1,0);
     m_camera.nearPlaneDistance = 1.f;
@@ -94,7 +98,7 @@ void MainClass::exitApplication()
 
 bool MainClass::init()
 {
-    initGLFW(1280, 768);
+    initGLFW(1920, 1080);
     initGLEW();
 
     m_pInput = boost::make_shared<GfxApi::Input>(m_pWindow);
@@ -129,7 +133,7 @@ void MainClass::updateCamera(float deltaTime)
     double mouseSpeed = 0.0001;
     horizontalAngle += mouseSpeed * deltaTime * double(halfWidth - xpos );
     verticalAngle += mouseSpeed * deltaTime * double(halfHeight - ypos );
-  
+
     Quat rotHorizontal = Quat(float3(0,1,0), horizontalAngle); 
     Quat rotVertical = Quat(float3(-1,0,0), verticalAngle);
 
@@ -140,7 +144,7 @@ void MainClass::updateCamera(float deltaTime)
     m_camera.up.Normalize();
     m_camera.front.Normalize();
 
-   
+   //printf("%f %f %f \n", m_camera.pos.x, m_camera.pos.y, m_camera.pos.z);
 }
 
 void MainClass::mainLoop()
@@ -148,11 +152,13 @@ void MainClass::mainLoop()
     init();
 
 
-    m_pChunkManager = boost::make_shared<ChunkManager>();
+    m_pChunkManager = boost::make_shared<ChunkManager>(m_camera);
 
     GfxApi::Texture tex;
+    tex.loadBMP("rock.bmp", 0);
 
-    tex.loadBMP("rock.bmp");
+    GfxApi::Texture tex2;
+    tex2.loadBMP("grass.bmp", 1);
 
     while(!m_exiting)
     {
@@ -240,6 +246,23 @@ void MainClass::handleInput(float deltaTime)
         m_bShowTree = false;
     }
 
+    if(m_pInput->keyPressed(GLFW_KEY_B))
+    {
+        m_bHideSeams ^= true;
+    }
+
+    if(m_pInput->keyPressed(GLFW_KEY_N))
+    {
+        m_bHideTerrain ^= true;
+    }
+
+    
+
+    if(m_pInput->keyPressed(GLFW_KEY_Z))
+    {
+        m_bDoClipmapUpdate = false;
+        m_pChunkManager->resetClipmap(m_camera);
+    }
     
 }
     
@@ -250,14 +273,16 @@ void MainClass::onTick()
     m_lastTick = Clock::Tick();
 
 
+    //if(m_bDoClipmapUpdate)
     if(m_bNoCamUpdate)
     {
-        m_pChunkManager->updateLoDTree(m_cameraFrozen);
+		m_pChunkManager->m_pClipmap->updateRings(m_cameraFrozen);
     }
     else
     {
-        m_pChunkManager->updateLoDTree(m_camera);
+		m_pChunkManager->m_pClipmap->updateRings(m_camera);
     }
+
 
     if (glfwWindowShouldClose(m_pWindow))
     {
@@ -279,7 +304,7 @@ void MainClass::onTick()
 
     if(!m_bHideTerrain)
     {
-        m_graphics.clear(true, true, true, 0, 0.5, 0.9);
+        m_graphics.clear(true, true, true, 0.5, 0.6, 0.8);
     }
     else
     {
@@ -288,80 +313,13 @@ void MainClass::onTick()
 
     if(m_bShowTree)
     {
-        m_pChunkManager->renderBounds(m_camera);
-    }
-
-    for(auto& node : m_meshList)
-    {
-        node->m_pMesh->applyVAO();
-        node->m_pMesh->m_sp->use();
-
-        int worldLocation = node->m_pMesh->m_sp->getUniformLocation("world");
-        assert(worldLocation != -1);
-        int worldViewProjLocation = node->m_pMesh->m_sp->getUniformLocation("worldViewProj");
-        assert(worldViewProjLocation != -1);
-            
-        float4x4 world = node->m_xForm;
-        node->m_pMesh->m_sp->setFloat4x4(worldLocation, world);
-        node->m_pMesh->m_sp->setFloat4x4(worldViewProjLocation, m_camera.ViewProjMatrix() );
-            
-        node->m_pMesh->draw();
+        m_pChunkManager->m_pClipmap->renderBounds(m_camera);
     }
 
 
+    m_pChunkManager->m_pClipmap->draw(m_camera, m_bHideSeams, m_bHideTerrain);
 
-    for(auto& chunk : m_pChunkManager->m_visibles)
-    {
-
-        if(chunk->m_pMesh && !m_bHideTerrain)
-        {
-            bool visibleChunk = false;
-
-            //if(m_bNoCamUpdate)
-            //{
-            //    visibleChunk = m_cameraFrozen.Intersects(chunk->m_bounds);
-            //}
-            //else
-            //{
-            //   visibleChunk = m_camera.Intersects(chunk->m_bounds);
-            //}
-
-           // if(visibleChunk)
-           // if(chunk->m_pTree->getLevel() > 2)
-            {
-                double scale = (1.0f/ChunkManager::CHUNK_SIZE) * (chunk->m_bounds.MaxX() - chunk->m_bounds.MinX());
-               
-                auto node = boost::make_shared<GfxApi::RenderNode>(chunk->m_pMesh, float3(chunk->m_bounds.MinX() , 
-                                                                                          chunk->m_bounds.MinY() ,
-                                                                                          chunk->m_bounds.MinZ() ),
-                                                                                          float3(scale, scale, scale), 
-                                                                                          float3(0, 0, 0));
-                node->m_pMesh->applyVAO();
-
-            /*    if(m_pChunkManager->m_pLastShader != node->m_pMesh->m_sp)
-                {*/
-                    node->m_pMesh->m_sp->use();
-                /*    m_pChunkManager->m_pLastShader = node->m_pMesh->m_sp;
-                }*/
-
-                int worldLocation = node->m_pMesh->m_sp->getUniformLocation("world");
-                assert(worldLocation != -1);
-                int worldViewProjLocation = node->m_pMesh->m_sp->getUniformLocation("worldViewProj");
-                assert(worldViewProjLocation != -1);
-            
-                float4x4 world = node->m_xForm;
-                node->m_pMesh->m_sp->setFloat4x4(worldLocation, world);
-                node->m_pMesh->m_sp->setFloat4x4(worldViewProjLocation, m_camera.ViewProjMatrix() );
-            
-                node->m_pMesh->draw();
-            }
-        }
-        
-    }
-
-    GfxApi::Mesh::unbindVAO();
-
-
+ 
     // Swap front and back buffers 
     glfwSwapBuffers(m_pWindow);
 
@@ -371,4 +329,14 @@ void MainClass::onTick()
  
 
     
+}
+
+Frustum& MainClass::getCamera()
+{
+    return m_camera;
+}
+
+Frustum* MainClass::getCameraPtr()
+{
+    return &m_camera;
 }

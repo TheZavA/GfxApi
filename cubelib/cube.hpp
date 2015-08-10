@@ -518,12 +518,16 @@ struct edge_t{
   static const boost::array<edge_t, 12>& all();
   
   bool operator<(const edge_t& other) const;
+
+  uint8_t index() const;
   
 private:
   edge_t(const corner_t& a, const corner_t& b);
+  edge_t(const corner_t& a, const corner_t& b, uint8_t index);
   edge_t();
   
   boost::array<corner_t, 2> mcorners;
+  uint8_t mindex;
 };
 
 struct box_t{
@@ -540,7 +544,7 @@ private:
 
 } // namespace cube
 
-#include "cubelib/cube.inl.hpp"
+#include "cube.inl.hpp"
 
 
 #endif // CUBE_H

@@ -26,6 +26,7 @@ const float3 CHILD_MIN_OFFSETS[] =
 	float3( 1, 1, 1 ),
 };
 
+
 // ----------------------------------------------------------------------------
 // data from the original DC impl, drives the contouring process
 
@@ -60,6 +61,20 @@ const int faceProcFaceMask[3][4][3] = {
 	{{1,0,2},{3,2,2},{5,4,2},{7,6,2}}
 } ;
 
+const int edgeToIndex[12] = { 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0 };
+
+const int edgeDuplicateMask[3][4][3] = {
+    {{0 ,0, 0}, {0,  0, -1}, {0, -1, 0},  { 0,  -1,  -1}},
+	{{0 ,0, 0}, {0,  0, -1}, {-1, 0, 0},  {-1,   0,  -1}},
+	{{0 ,0, 0}, {0, -1,  0}, {-1, 0, 0},  {-1,  -1,   0}}
+};
+
+const int edgeDuplicateCornerMask[3][4][2] = {
+    {{0,4}, {1,5}, {2,6},  {3,7}},
+    {{0,2}, {1,3}, {4,6},  {5,7}},
+	{{0,1}, {2,3}, {4,5},  {6,7}}
+};
+
 const int faceProcEdgeMask[3][4][6] = {
 	{{1,4,0,5,1,1},{1,6,2,7,3,1},{0,4,6,0,2,2},{0,5,7,1,3,2}},
 	{{0,2,3,0,1,0},{0,6,7,4,5,0},{1,2,0,6,4,2},{1,3,1,7,5,2}},
@@ -74,7 +89,7 @@ const int edgeProcEdgeMask[3][2][5] = {
 
 const int processEdgeMask[3][4] = {{3,2,1,0},{7,5,6,4},{11,10,9,8}} ;
 
-enum OctreeNodeType
+enum OctreeNodeType : uint8_t
 {
 	Node_None,
 	Node_Internal,
@@ -95,7 +110,7 @@ struct MeshVertex
 };
 
 typedef std::vector<MeshVertex> VertexBuffer;
-typedef std::vector<int> IndexBuffer;
+typedef std::vector<unsigned int> IndexBuffer;
 
 // ----------------------------------------------------------------------------
 
@@ -107,11 +122,11 @@ struct OctreeDrawInfo
 	{
 	}
 
-	int				index;
+	int32_t			index;
 	int				corners;
 	float3			position;
 	float3			averageNormal;
-	QEF				qef;
+	QefData         qef;
 };
 
 // ----------------------------------------------------------------------------
@@ -122,33 +137,47 @@ public:
 
 	OctreeNode()
 		: type(Node_None)
-		, min(0, 0, 0)
+		, minx(0)
+        , miny(0)
+        , minz(0)
 		, size(0)
-		, drawInfo(nullptr)
+		//, drawInfo(nullptr)
 	{
+        drawInfo.averageNormal = float3(0,0,0);
+        memset(&drawInfo, 0, sizeof(OctreeDrawInfo));
+        
 		for (int i = 0; i < 8; i++)
 		{
-			children[i] = nullptr;
+			//children[i] = nullptr;
+            childrenIdx[i] = -1;
 		}
 	}
 
 	OctreeNode(const OctreeNodeType _type)
 		: type(_type)
-		, min(0, 0, 0)
+		, minx(0)
+        , miny(0)
+        , minz(0)
 		, size(0)
-		, drawInfo(nullptr)
+		//, drawInfo(nullptr)
 	{
+        drawInfo.averageNormal = float3(0,0,0);
+        memset(&drawInfo, 0, sizeof(OctreeDrawInfo));
 		for (int i = 0; i < 8; i++)
 		{
-			children[i] = nullptr;
+			//children[i] = nullptr;
+            childrenIdx[i] = -1;
 		}
 	}
     
 	OctreeNodeType	type;
-	float3			min;
-	int				size;
-	OctreeNode*		children[8];
-	OctreeDrawInfo*	drawInfo;
+    uint16_t minx;
+    uint16_t miny;
+    uint16_t minz;
+	uint16_t size;
+	//OctreeNode*		children[8];
+    int32_t         childrenIdx[8];
+	OctreeDrawInfo	drawInfo;
 };
 
 // ----------------------------------------------------------------------------
@@ -156,6 +185,7 @@ public:
 OctreeNode* BuildOctree(const float3& min, const int size, const float threshold);
 void DestroyOctree(OctreeNode* node);
 void GenerateMeshFromOctree(OctreeNode* node, VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer);
+void GenerateMeshFromOctree(int32_t node_index, VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, std::vector<OctreeNode>& node_list);
 
 // ----------------------------------------------------------------------------
 

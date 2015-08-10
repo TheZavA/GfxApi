@@ -53,6 +53,7 @@ GLenum toGL(VertexDataType type)
         case (VertexDataType::INT): return GL_INT;
         case (VertexDataType::FLOAT): return GL_FLOAT;
         case (VertexDataType::DOUBLE): return GL_DOUBLE;
+        default: return GL_NONE;
     }
 }
 
@@ -643,11 +644,67 @@ int ShaderProgram::getUniformLocation(const char* name)
     return glGetUniformLocation(m_programHandle, name);
 }
 
+void ShaderProgram::setUniform(const float4x4& matrix, const std::string& name)
+{
+    int location = getUniformLocation(name.c_str());
+    assert(location != -1);
+
+    ShaderProgram::setFloat4x4(location, matrix);
+}
+
+void ShaderProgram::setUniform(const float value, const std::string& name)
+{
+    int location = getUniformLocation(name.c_str());
+    assert(location != -1);
+
+    ShaderProgram::setFloat(location, value);
+}
+
+void ShaderProgram::setUniform(const float v1, const float v2, const float v3, const std::string& name)
+{
+    int location = getUniformLocation(name.c_str());
+    assert(location != -1);
+
+    ShaderProgram::setFloat3(location, v1, v2, v3);
+}
+
+
+void ShaderProgram::setUniform(const int value, const std::string& name)
+{
+    int location = getUniformLocation(name.c_str());
+    assert(location != -1);
+
+    ShaderProgram::setInt(location, value);
+}
+
 
 void ShaderProgram::setFloat4x4(int parameterIndex, const float4x4& matrix)
 {
     float4x4 colMajor = matrix.Transposed();
     glUniformMatrix4fv(parameterIndex, 1 /*count*/, GL_FALSE /*transpose*/, colMajor.ptr() /*value*/);
+    
+}
+
+void ShaderProgram::setFloat(int parameterIndex, const float value)
+{
+    glUniform1f(parameterIndex, value);    
+}
+
+void ShaderProgram::setFloat3(int parameterIndex, const float v1, const float v2, const float v3)
+{
+    glUniform3f(parameterIndex, v1, v2, v3);    
+}
+
+void ShaderProgram::setInt(int parameterIndex, const int value)
+{
+    glUniform1i(parameterIndex, value);    
+}
+
+void ShaderProgram::bindTexture(int index, int textureHandle, const std::string& samplerName)
+{
+    glActiveTexture(GL_TEXTURE0 + index); //firstTextureIndex should be unique amongst the textures bound for a particular shader
+    glBindTexture(GL_TEXTURE_2D, textureHandle);
+    glUniform1i(glGetUniformLocation(m_programHandle, samplerName.c_str()), index); 
 }
 
 void ShaderProgram::attach(Shader& shader)
@@ -839,7 +896,7 @@ void Mesh::unbindVAO()
 
 void Mesh::draw(int numIndices, int startIndexOffset)
 {
-    //checkValid();
+    checkValid();
         
     if (m_vao == 0)
         throw std::runtime_error("Can't render the mesh: no VAO");
@@ -1122,7 +1179,7 @@ void Texture::loadDDS(const char * imagepath)
 }
 
 
-void Texture::loadBMP(const char * imagepath)
+void Texture::loadBMP(const char * imagepath, int index = 0)
 {
 
 	printf("Reading image %s\n", imagepath);
@@ -1131,7 +1188,7 @@ void Texture::loadBMP(const char * imagepath)
 	unsigned char header[54];
 	unsigned int dataPos;
 	unsigned int imageSize;
-	unsigned int width, height;
+//	unsigned int width, height;
 	// Actual RGB data
 	unsigned char * data;
 
@@ -1189,7 +1246,11 @@ void Texture::loadBMP(const char * imagepath)
 	// Create one OpenGL texture
 	GLuint textureID;
 	glGenTextures(1, &textureID);
+
 	
+
+    glActiveTexture(GL_TEXTURE0 + index);
+
 	// "Bind" the newly created texture : all future texture functions will modify this texture
 	glBindTexture(GL_TEXTURE_2D, textureID);
 

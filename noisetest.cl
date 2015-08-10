@@ -1,3 +1,198 @@
+/*
+ * Copyright 1993-2010 NVIDIA Corporation.  All rights reserved.
+ *
+ * Please refer to the NVIDIA end user license agreement (EULA) associated
+ * with this source code for terms and conditions that govern your use of
+ * this software. Any use, reproduction, disclosure, or distribution of
+ * this software and related documentation outside the terms of the EULA
+ * is strictly prohibited.
+ *
+ */
+
+
+//Passed down with -D option on clBuildProgram
+//Must be a power of two
+#define WORKGROUP_SIZE 256
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Scan codelets
+////////////////////////////////////////////////////////////////////////////////
+#if(1)
+    //Naive inclusive scan: O(N * log2(N)) operations
+    //Allocate 2 * 'size' local memory, initialize the first half
+    //with 'size' zeros avoiding if(pos >= offset) condition evaluation
+    //and saving instructions
+    inline uint scan1Inclusive(uint idata, __local uint *l_Data, uint size){
+        uint pos = 2 * get_local_id(0) - (get_local_id(0) & (size - 1));
+        l_Data[pos] = 0;
+        pos += size;
+        l_Data[pos] = idata;
+
+        for(uint offset = 1; offset < size; offset <<= 1){
+            barrier(CLK_LOCAL_MEM_FENCE);
+            uint t = l_Data[pos] + l_Data[pos - offset];
+            barrier(CLK_LOCAL_MEM_FENCE);
+            l_Data[pos] = t;
+        }
+
+        return l_Data[pos];
+    }
+
+    inline uint scan1Exclusive(uint idata, __local uint *l_Data, uint size){
+        return scan1Inclusive(idata, l_Data, size) - idata;
+    }
+
+#else
+    #define LOG2_WARP_SIZE 5U
+    #define      WARP_SIZE (1U << LOG2_WARP_SIZE)
+
+    //Almost the same as naive scan1Inclusive but doesn't need barriers
+    //and works only for size <= WARP_SIZE
+    inline uint warpScanInclusive(uint idata, __local uint *l_Data, uint size){
+        uint pos = 2 * get_local_id(0) - (get_local_id(0) & (size - 1));
+        l_Data[pos] = 0;
+        pos += size;
+        l_Data[pos] = idata;
+
+        if(size >=  2) l_Data[pos] += l_Data[pos -  1];
+        if(size >=  4) l_Data[pos] += l_Data[pos -  2];
+        if(size >=  8) l_Data[pos] += l_Data[pos -  4];
+        if(size >= 16) l_Data[pos] += l_Data[pos -  8];
+        if(size >= 32) l_Data[pos] += l_Data[pos - 16];
+
+        return l_Data[pos];
+    }
+
+    inline uint warpScanExclusive(uint idata, __local uint *l_Data, uint size){
+        return warpScanInclusive(idata, l_Data, size) - idata;
+    }
+
+    inline uint scan1Inclusive(uint idata, __local uint *l_Data, uint size){
+        if(size > WARP_SIZE){
+            //Bottom-level inclusive warp scan
+            uint warpResult = warpScanInclusive(idata, l_Data, WARP_SIZE);
+
+            //Save top elements of each warp for exclusive warp scan
+            //sync to wait for warp scans to complete (because l_Data is being overwritten)
+            barrier(CLK_LOCAL_MEM_FENCE);
+            if( (get_local_id(0) & (WARP_SIZE - 1)) == (WARP_SIZE - 1) )
+                l_Data[get_local_id(0) >> LOG2_WARP_SIZE] = warpResult;
+
+            //wait for warp scans to complete
+            barrier(CLK_LOCAL_MEM_FENCE);
+            if( get_local_id(0) < (WORKGROUP_SIZE / WARP_SIZE) ){
+                //grab top warp elements
+                uint val = l_Data[get_local_id(0)];
+                //calculate exclsive scan and write back to shared memory
+                l_Data[get_local_id(0)] = warpScanExclusive(val, l_Data, size >> LOG2_WARP_SIZE);
+            }
+
+            //return updated warp scans with exclusive scan results
+            barrier(CLK_LOCAL_MEM_FENCE);
+            return warpResult + l_Data[get_local_id(0) >> LOG2_WARP_SIZE];
+        }else{
+            return warpScanInclusive(idata, l_Data, size);
+        }
+    }
+
+    inline uint scan1Exclusive(uint idata, __local uint *l_Data, uint size){
+        return scan1Inclusive(idata, l_Data, size) - idata;
+    }
+#endif
+
+
+//Vector scan: the array to be scanned is stored
+//in work-item private memory as uint4
+inline uint4 scan4Inclusive(uint4 data4, __local uint *l_Data, uint size){
+    //Level-0 inclusive scan
+    data4.y += data4.x;
+    data4.z += data4.y;
+    data4.w += data4.z;
+
+    //Level-1 exclusive scan
+    uint val = scan1Inclusive(data4.w, l_Data, size / 4) - data4.w;
+
+    return (data4 + (uint4)val);
+}
+
+inline uint4 scan4Exclusive(uint4 data4, __local uint *l_Data, uint size){
+    return scan4Inclusive(data4, l_Data, size) - data4;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Scan kernels
+////////////////////////////////////////////////////////////////////////////////
+__kernel __attribute__((reqd_work_group_size(WORKGROUP_SIZE, 1, 1)))
+void scanExclusiveLocal1(
+    __global uint4 *d_Dst,
+    __global uint4 *d_Src,
+    __local uint *l_Data,
+    uint size
+){
+    //Load data
+    uint4 idata4 = d_Src[get_global_id(0)];
+
+    //Calculate exclusive scan
+    uint4 odata4  = scan4Exclusive(idata4, l_Data, size);
+
+    //Write back
+    d_Dst[get_global_id(0)] = odata4;
+}
+
+typedef struct uin32_2
+{
+    uint n;
+    uint size;
+} uint32_2_cl;
+
+//Exclusive scan of top elements of bottom-level scans (4 * THREADBLOCK_SIZE)
+__kernel __attribute__((reqd_work_group_size(WORKGROUP_SIZE, 1, 1)))
+void scanExclusiveLocal2(
+    __global uint *d_Buf,
+    __global uint *d_Dst,
+    __global uint *d_Src,
+    __local uint *l_Data,
+    uint32_2_cl sizen
+
+){
+    uint N = sizen.n;
+    uint arrayLength = sizen.size;
+    //Load top elements
+    //Convert results of bottom-level scan back to inclusive
+    //Skip loads and stores for inactive work-items of the work-group with highest index(pos >= N)
+    uint data = 0;
+    if(get_global_id(0) < N)
+    data =
+        d_Dst[(4 * WORKGROUP_SIZE - 1) + (4 * WORKGROUP_SIZE) * get_global_id(0)] + 
+        d_Src[(4 * WORKGROUP_SIZE - 1) + (4 * WORKGROUP_SIZE) * get_global_id(0)];
+
+    //Compute
+    uint odata = scan1Exclusive(data, l_Data, arrayLength);
+
+    //Avoid out-of-bound access
+    if(get_global_id(0) < N)
+        d_Buf[get_global_id(0)] = odata;
+}
+
+//Final step of large-array scan: combine basic inclusive scan with exclusive scan of top elements of input arrays
+__kernel __attribute__((reqd_work_group_size(WORKGROUP_SIZE, 1, 1)))
+void uniformUpdate(
+    __global uint4 *d_Data,
+    __global uint *d_Buf
+){
+    __local uint buf[1];
+
+    uint4 data4 = d_Data[get_global_id(0)];
+
+    if(get_local_id(0) == 0)
+        buf[0] = d_Buf[get_group_id(0)];
+
+    barrier(CLK_LOCAL_MEM_FENCE);
+    data4 += (uint4)buf[0];
+    d_Data[get_global_id(0)] = data4;
+}
 
 #define ONE_F1                 (1.0f)
 #define ZERO_F1                (0.0f)
@@ -11,10 +206,25 @@ static __constant float4 ONE_F4 = (float4)(1.0f, 1.0f, 1.0f, 1.0f);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static __constant float3 CHILD_MIN_OFFSETS[8] =
+static __constant int3 CHILD_MIN_OFFSETS[8] =
 {
 	// needs to match the vertMap from Dual Contouring impl
-	(float3)( 0, 0, 0 ), (float3)( 0, 0, 1 ), (float3)( 0, 1, 0 ), (float3)( 0, 1, 1 ), (float3)( 1, 0, 0 ), (float3)( 1, 0, 1 ), (float3)( 1, 1, 0 ), (float3)( 1, 1, 1 )
+	(int3)( 0, 0, 0 ), 
+    (int3)( 0, 0, 1 ), 
+    (int3)( 0, 1, 0 ), 
+    (int3)( 0, 1, 1 ), 
+    (int3)( 1, 0, 0 ), 
+    (int3)( 1, 0, 1 ), 
+    (int3)( 1, 1, 0 ), 
+    (int3)( 1, 1, 1 )
+};
+
+static __constant int3 CORNER_OFFSETS[3] =
+{
+	// needs to match the vertMap from Dual Contouring impl
+	(int3)( 1, 0, 0 ), 
+    (int3)( 0, 1, 0 ), 
+    (int3)( 0, 0, 1 )
 };
 
 static __constant int edgevmap[12][2] = 
@@ -1051,236 +1261,6 @@ float turbulence3d(
 
  
 
-#if USE_IMAGES_FOR_RESULTS
-
- 
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
- 
-
-__kernel void 
-
-GradientNoiseImage2d(   
-
-    write_only image2d_t output,
-
-    const float2 bias, 
-
-    const float2 scale,
-
-    const float amplitude) 
-
-{
-
-    int2 coord = (int2)(get_global_id(0), get_global_id(1));
-
- 
-
-    int2 size = (int2)(get_global_size(0), get_global_size(1));
-
- 
-
-    float2 position = (float2)(coord.x / (float)size.x, 
-
-                                  coord.y / (float)size.y);
-
-        
-
-    float2 sample = (position + bias) * scale;
-
-   
-
-    float value = ugnoise2d(sample);
-
-    
-
-    float4 color = (float4)(value, value, value, 1.0f) * amplitude;
-
-    color.w = 1.0f;
-
-    
-
-    write_imagef(output, coord, color);
-
-}
-
- 
-
-__kernel void 
-
-MonoFractalImage2d(
-
-    write_only image2d_t output,
-
-    const float2 bias, 
-
-    const float2 scale,
-
-    const float lacunarity, 
-
-    const float increment, 
-
-    const float octaves,    
-
-    const float amplitude)
-
-{
-
-    int2 coord = (int2)(get_global_id(0), get_global_id(1));
-
- 
-
-    int2 size = (int2)(get_global_size(0), get_global_size(1));
-
- 
-
-    float2 position = (float2)(coord.x / (float)size.x, 
-
-                                  coord.y / (float)size.y);
-
-        
-
-    float2 sample = (position + bias);
-
-   
-
-    float value = monofractal2d(sample, scale.x, lacunarity, increment, octaves);
-
- 
-
-    float4 color = (float4)(value, value, value, 1.0f) * amplitude;
-
-    color.w = 1.0f;
-
-    
-
-    write_imagef(output, coord, color);
-
-}
-
- 
-
-__kernel void 
-
-TurbulenceImage2d(
-
-    write_only image2d_t output,
-
-    const float2 bias, 
-
-    const float2 scale,
-
-    const float lacunarity, 
-
-    const float increment, 
-
-    const float octaves,    
-
-    const float amplitude) 
-
-{
-
-    int2 coord = (int2)(get_global_id(0), get_global_id(1));
-
- 
-
-    int2 size = (int2)(get_global_size(0), get_global_size(1));
-
- 
-
-    float2 position = (float2)(coord.x / (float)size.x, 
-
-                                  coord.y / (float)size.y);
-
-    
-
-    float2 sample = (position + bias);
-
- 
-
-    float value = turbulence2d(sample, scale.x, lacunarity, increment, octaves);
-
- 
-
-    float4 color = (float4)(value, value, value, 1.0f) * amplitude;
-
-    color.w = 1.0f;
-
- 
-
-    write_imagef(output, coord, color);
-
-}
-
- 
-
-__kernel void 
-
-RidgedMultiFractalImage2d(  
-
-    write_only image2d_t output,
-
-    const float2 bias, 
-
-    const float2 scale,
-
-    const float lacunarity, 
-
-    const float increment, 
-
-    const float octaves,    
-
-    const float amplitude) 
-
-{
-
-    int2 coord = (int2)(get_global_id(0), get_global_id(1));
-
- 
-
-    int2 size = (int2)(get_global_size(0), get_global_size(1));
-
- 
-
-    float2 position = (float2)(coord.x / (float)size.x, 
-
-                                  coord.y / (float)size.y);
-
-        
-
-    float2 sample = (position + bias);
-
- 
-
-    float value = ridgedmultifractal2d(sample, scale.x, lacunarity, increment, octaves);
-
- 
-
-    float4 color = (float4)(value, value, value, 1.0f) * amplitude;
-
-    color.w = 1.0f;
-
- 
-
-    write_imagef(output, coord, color);
-
-}
-
- 
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
- 
-
-#endif // USE_IMAGES_FOR_RESULTS
-
- 
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
- 
-
 __kernel void 
 
 GradientNoiseArray2d(   
@@ -1485,72 +1465,83 @@ RidgedMultiFractalArray2d(
 
 }
 
+float fBM(float2 position, float frequency, float lacunarity, float octaves)
+{
+
+    float total = 0.0f;
+
+    float gain = 0.52f;
+    //float gain = 0.48f;
+
+    float amplitude = gain;
+
+
+    for (int i = 0; i < octaves; ++i)
+    {
+        total += sgnoise2d(position * frequency) * amplitude;         
+        frequency *= lacunarity;
+        amplitude *= gain;
+    }
+
+    return total;   
+
+}
+
 float density_function(float4 pos)
 {
-    return multifractal3d(pos, 0.00001, 2.2, 0, 14);
+    return multifractal3d(pos, 0.01, 2.19, 0, 10);
 }
 
 float density_function2d(float2 pos, int octaves)
 {
-    return ridgedmultifractal2d(pos, 0.00016, 2.2, 0, (int)(octaves));
-    //return ridgedmultifractal2d(pos, 0.001001, 2.2, 0, 17);
+    //return 0.3f;
+    //return ridgedmultifractal2d(pos, 0.0004, 2.2, 0, (int)(octaves));
+    return fBM(pos, 0.0004f, 2.15f, octaves);
+    //return multifractal2d(pos, 0.00001, 2.2, 0, 13);
+}
+
+float density_function12d(float2 pos, int octaves)
+{
+    
+    //return ridgedmultifractal2d(pos, 0.0005, 2.2, 0, (int)(octaves));
+    return ridgedmultifractal2d(pos, 0.00006, 2.2, 0, (int)(octaves));
 }
 
 float density_function2d1(float2 pos, int octaves)
 {
     
-    //return ridgedmultifractal2d(pos, 0.006001, 2.2, 0, (int)(octaves));
-    return ridgedmultifractal2d(pos, 0.00716, 2.2, 0, (int)(octaves) - 2);
+    //return ridgedmultifractal2d(pos, 0.005001, 2.2, 0, (int)(octaves));
+    return ridgedmultifractal2d(pos, 0.003, 2.193, 0, (int)(octaves));
 }
 
 float densities3d(float3 pos)
 {
-    float density = density_function2d((float2)(pos.x, pos.z), 17);
-    float density1 = density_function2d1((float2)(pos.x*0.7, pos.z*0.7), 17);
-    //float density2 = density_function((float4)(pos.x*10, pos.y*10, pos.z*10, 0));
+    float density = density_function2d((float2)(pos.x*0.01, pos.z*0.01), 14);
+    float density1 = density_function12d((float2)(pos.x*0.6, pos.z*0.6), 9);
+    float density2 = density_function2d1((float2)(pos.x*0.1, pos.z*0.1), 8);
+  //  float density3 = density_function((float4)(pos.x*0.1, pos.y*0.1, pos.z*0.1, 0));
 
-    float worldYCurr = pos.y;
+    float worldYCurr = pos.y *0.2;
 
     float noise = 0.5f + density * 0.5f;
-    float height = noise * 6000;
+    //float height = noise * 500;
+    float height = noise * 400;
     float h0 = height - worldYCurr;
 
+   // h0 = density_function((float4)(pos.x*16,pos.y*16,pos.z*16,0));
+
     float noise1 = 0.5f + density1 * 0.5f;
-    float height1 = noise1 * 30;
+    float height1 = noise1 * 260;
     float h01 = height1 - worldYCurr;
-
-    return (h01 * 0.0001) + (h0 * 0.0001);
+  /*  if(worldYCurr > 1250 + min(h0/2800, h01/1360))
+    {
+        density3 = min(h0/2800, h01/1360 );
+    }*/
+   //return density3;
+   // return max(  density3, min(h0/2800, h01/1360 ) );
+    return min(h0/100, h01/120 ) + density2 * 0.28f  /*- density3 * 1.0f*/;
+    //return (h0 ) /*+ (h01 * 1.1)*/;
 }
-
-kernel
-void
-test(__global float* output, float worldx, float worldy, float worldz, float res)
-{
-
-    int3 coord = (int3)(get_global_id(0), get_global_id(1), get_global_id(2));
-
-	int3 size = (int3)(get_global_size(0), get_global_size(1), get_global_size(2));
-
-	float3 position = (float3)((worldx + coord.x * res ), (worldy + coord.y * res), (worldz + coord.z * res));
-    
-	uint index = ((coord.y * size.x*size.z)) + ((coord.z * size.x)) + (coord.x);
-
-    output[index] = densities3d(position);
-}
-
-
-typedef struct corner_cl
-{
-   	float mins[3];
-	int corners;
-} corner_cl_t;
-
-typedef struct zeroCrossings
-{
-   	float positions[6][3];
-    float normals[6][3];
-	int edgeCount;
-} zeroCrossings_t;
 
 typedef struct cl_float3
 {
@@ -1559,75 +1550,82 @@ typedef struct cl_float3
     float z;
 } cl_float3_t;
 
-kernel
-void
-genCorners(__global float* densities, __global corner_cl_t* output, cl_float3_t pos, float res)
+
+
+typedef struct zeroCrossings
 {
-    int3 coord = (int3)(get_global_id(0), get_global_id(1), get_global_id(2));
-	int3 size = (int3)(get_global_size(0), get_global_size(1), get_global_size(2));
-
-    int3 size1 = (int3)(size.x+1, size.y+1, size.z+1);
-
-    float4 worldPos = (float4)((pos.x + coord.x * res ), (pos.y + coord.y * res), (pos.z + coord.z * res), 0);
-
-    uint index = ((coord.y * size.x * size.z)) + ((coord.z * size.x)) + (coord.x);
-
-    output[index].corners = 0;
-    output[index].mins[0] = coord.x;
-    output[index].mins[1] = coord.y;
-    output[index].mins[2] = coord.z;
-	for (int i = 0; i < 8; i++)
-	{
-        float3 pos1 = (float3)(coord.x, coord.y, coord.z) + CHILD_MIN_OFFSETS[i];
-        uint index2 = ((pos1.y * size1.x * size1.z)) + ((pos1.z * size1.x)) + (pos1.x);
-        //float3 cornerPos = (float3)(worldPos.x, worldPos.y, worldPos.z) + CHILD_MIN_OFFSETS[i] * res;
-        //float density = densities3d(cornerPos);
-        float density = densities[index2];
-		int material = density < 0.f ? 1 : 0;
-		output[index].corners |= (material << i);
-	}
- 
-}
+   	float positions[6][3];
+    float normals[6][3];
+    ushort xPos;
+    ushort yPos;
+    ushort zPos;
+	uchar edgeCount;
+    int corner;
+} zeroCrossings_t;
 
 
 
+
+
+
+typedef struct int2
+{
+    int values[2];
+} int2_cl;
+
+typedef struct cl_edge
+{
+    int grid_pos[4];
+    int edge;
+    cl_float3_t normal;
+    cl_float3_t zero_crossing;
+} cl_edge_t;
+
+typedef struct cl_int4
+{
+    uchar x;
+    uchar y;
+    uchar z;
+    uchar w;
+} cl_int4_t;
 
 
 float3 calculateSurfaceNormal(float3 pos, float res)
 {
-    float H = 1.f * res;
-    float dx = densities3d(pos + (float3)(H, 0.f, 0.f)) - densities3d(pos - (float3)(H, 0.f, 0.f));
-    float dy = densities3d(pos + (float3)(0.f, H, 0.f)) - densities3d(pos - (float3)(0.f, H, 0.f));
-    float dz = densities3d(pos + (float3)(0.f, 0.f, H)) - densities3d(pos - (float3)(0.f, 0.f, H));
+    const float H = 1.f * res;
+    const float dx = densities3d(pos + (float3)(H, 0.f, 0.f)) - densities3d(pos - (float3)(H, 0.f, 0.f));
+    const float dy = densities3d(pos + (float3)(0.f, H, 0.f)) - densities3d(pos - (float3)(0.f, H, 0.f));
+    const float dz = densities3d(pos + (float3)(0.f, 0.f, H)) - densities3d(pos - (float3)(0.f, 0.f, H));
 
-    float3 normal = normalize((float3)(dx, -dy, dz));
-    return normal;
-}
+    return normalize((float3)(dx, dy, dz));
+} 
 
-float3 approximateZeroCrossingPosition( float3 p0, float3 p1, float res)
+__constant float ZERO_INCREMENT = 1.f / 8.0f;
+__constant int ZERO_STEPS = 8;
+
+float3 approximateZeroCrossingPosition(float3 p0, float3 p1, float res)
 {
 
-	// approximate the zero crossing by finding the min value along the edge
-	float minValue = 1.f;
-	float t = 0.f;
-	float currentT = 0.f;
-	const int steps = 8;
-	const float increment = (1.f) / (float)steps;
-	while (currentT <= 1)
-	{
-		float3 p = p0 + ((p1 - p0) * currentT);
-		float density = fabs(densities3d(p));
-		if (density < minValue)
-		{
-			minValue = density;
-			t = currentT;
-		}
+    float minValue = FLT_MAX;
+    float currentT = 0.f;
+    float t = 0.f;
+    for (int i = 0; i <= ZERO_STEPS; i++)
+    {
+        const float3 p = mix(p0, p1, currentT);
+        const float d = fabs(densities3d(p));
+        if (d < minValue)
+        {
+            t = currentT;
+            minValue = d;
+        }
 
-		currentT += increment;
-	}
+        currentT += ZERO_INCREMENT;
+   }
 
-	return p0 + ((p1 - p0) * t);
+   return mix(p0, p1, t);
 }
+
+
 
 float3 LinearInterp(float3 p1, float p1Val, float3 p2, float p2Val, float value)
 {
@@ -1639,128 +1637,3 @@ float3 LinearInterp(float3 p1, float p1Val, float3 p2, float p2Val, float value)
     sum /= sum1;
     return (float3)(p1.x + sum.x, p1.y + sum.y, p1.z + sum.z);
 }
-
-kernel
-void
-genZeroCrossings(__global corner_cl_t* corners, __global zeroCrossings_t* output, cl_float3_t worldPos, float res)
-{
-    int index = get_global_id(0);
-    //int3 coord = (int3)(get_global_id(0), get_global_id(1), get_global_id(2));
-
-	//int3 size = (int3)(get_global_size(0), get_global_size(1), get_global_size(2));
-
-    
-
-
-    int corner = corners[index].corners;
-    int3 coord = (int3)(corners[index].mins[0], corners[index].mins[1], corners[index].mins[2]);
-
-    uint outIndex = (((coord.y * 33*33)) + ((coord.z * 33)) + (coord.x));
-    int edgeCount = 0;
-
-    for (int i = 0; i < 12 && edgeCount < 6; i++)
-	{
-		int c1 = edgevmap[i][0];
-		int c2 = edgevmap[i][1];
-
-		int m1 = (corner >> c1) & 1;
-		int m2 = (corner >> c2) & 1;
-
-		if ((m1 == 1 && m2 == 1) || (m1 == 0 && m2 == 0))
-		{
-			// no zero crossing on this edge
-			continue;
-		}
-
-        float3 worldPos1 = (float3)((worldPos.x + coord.x * res ), (worldPos.y + coord.y * res), (worldPos.z + coord.z * res));
-
-		const float3 p1 = worldPos1 + CHILD_MIN_OFFSETS[c1] * res;
-		const float3 p2 = worldPos1 + CHILD_MIN_OFFSETS[c2] * res;
-		const float3 p = approximateZeroCrossingPosition(p1, p2, res);
-
-        
-
-        //float val1 = densities3d(p1);
-        //float val2 = densities3d(p2);
-
-        //float3 p = LinearInterp(p1, val1, p2, val2, 0.00001);
-
-        //float3 pos = (((p1+p2)/2)-(float3)(worldPos.x,worldPos.y,worldPos.z)) / res;
-        float3 pos = (p-(float3)(worldPos.x,worldPos.y,worldPos.z)) / res;
-
-        output[outIndex].positions[edgeCount][0] = pos.x;
-        output[outIndex].positions[edgeCount][1] = pos.y;
-        output[outIndex].positions[edgeCount][2] = pos.z;
-
-        float3 surfNorm = calculateSurfaceNormal(p, res);
-
-        output[outIndex].normals[edgeCount][0] = surfNorm.x;
-        output[outIndex].normals[edgeCount][1] = surfNorm.y;
-        output[outIndex].normals[edgeCount][2] = surfNorm.z;
-
-		edgeCount++;
-	}
-
-    output[outIndex].edgeCount = edgeCount;
-
-}
-
-kernel
-void
-get2dNoise(__global float* output, float worldx, float worldy, float res, int level)
-{
-
-    int2 coord = (int2)(get_global_id(0), get_global_id(1));
-
-	int2 size = (int2)(get_global_size(0), get_global_size(1));
-
-	float2 position = (float2)((worldx + (coord.x) * res ), (worldy + coord.y * res ));
-    
-	uint index = ((coord.y * size.x)) + (coord.x);
-
-	float value = density_function2d(position, 17) ;
-
-    output[index] = value;
-}
-
-
-
-kernel
-void
-surfaceNormal(__global float* output, float worldx, float worldy, float worldz, float res)
-{
-
-    int3 coord = (int3)(get_global_id(0), get_global_id(1), get_global_id(2));
-
-	int3 size = (int3)(get_global_size(0), get_global_size(1), get_global_size(2));
-
-	float4 position = (float4)((worldx + (coord.x) * res - (4*res)), (worldy + coord.y * res - (4*res)), (worldz + coord.z * res- (4*res)), 0);
-    
-	uint index = (((coord.y * size.x*size.z)) + ((coord.z * size.x)) + (coord.x)) *3;
-
-    float H = 0.00001f;
-    float dx = density_function(position + (float4)(H, 0.f, 0.f, 0.f)) - density_function(position - (float4)(H, 0.f, 0.f, 0.f));
-    float dy = density_function(position + (float4)(0.f, H, 0.f, 0.f)) - density_function(position - (float4)(0.f, H, 0.f, 0.f));
-    float dz = density_function(position + (float4)(0.f, 0.f, H, 0.f)) - density_function(position - (float4)(0.f, 0.f, H, 0.f));
-
-    float3 normal = normalize((float3)(dx, dy, dz));
-
-    output[index] = normal.x;
-    output[index+1] = normal.y;
-    output[index+2] = normal.z;
-}
-
-kernel
-void
-get2dNoiseFromArray(__global float* input, __global float* output)
-{
-
-    int index = get_global_id(0);
-    float MAX_HEIGHT = 40.0f;
-
-    float noise = 0.5f + density_function2d((float2)(input[index*3], input[index*3+2]), 8) * 0.5f;
-	output[index] =  input[index*3+1] - (MAX_HEIGHT * noise);
-
-
-}
-

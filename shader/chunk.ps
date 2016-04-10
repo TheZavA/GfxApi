@@ -3,9 +3,12 @@
 in vec3 normal;
 in vec3 pos;
 in vec4 world_pos;
+in float material;
 
 uniform sampler2D tex1;
 uniform sampler2D tex2;
+uniform sampler2D tex3;
+uniform sampler2D tex4;
 
 uniform float res;
 
@@ -29,77 +32,196 @@ vec3 applyFog( in vec3  rgb,       // original color of the pixel
 vec3 applyFog2( in vec3  rgb,     // original color of the pixel
                in float distance, // camera to point distance
                in vec3  rayDir)   // camera to point vector
-               
 {
-	float b =  0.0004;
+	float b =  0.000010;
     float fogAmount = 1.0 - exp( -distance*b );
 	//float fogAmount = 0.8 * exp(-cameraPos.y*b) * (1.0-exp( -distance*rayDir.y*b ))/rayDir.y;
-    float sunAmount = max( dot( rayDir, vec3(0.9, 0.6, 0.2) ), 0.0 );
-    vec3  fogColor  = mix( vec3(0.5,0.6,0.8), // bluish
+    float sunAmount = max( dot( rayDir, vec3(0.6, 0.4, 0.2) ), 0.0 );
+    vec3  fogColor  = mix( vec3(0.5,0.6,0.9), // bluish
                            vec3(1.0,0.9,0.7), // yellowish
                            pow(sunAmount,8.0) );
     return mix( rgb, fogColor, fogAmount );
 }
 
-vec4 mapTriPlanar(sampler2D texture)
+vec3 applyFog3( in vec3  rgb,     // original color of the pixel
+               in float distance, // camera to point distance
+               in vec3  rayDir)   // camera to point vector
 {
-	vec3 blending = abs( normal );
-	blending = normalize(max(blending, 0.00001)); // Force weights to sum to 1.0
-	float b = (blending.x + blending.y + blending.z);
-	blending /= vec3(b, b, b);
+   float maxFogHeight = 900; // higher the fog won't go
+   float c = 0.002;
+   float b = 0.2;
 
-	vec4 xaxis = texture2D( texture, pos.yz * res );
-	vec4 yaxis = texture2D( texture, pos.xz * res );
-	vec4 zaxis = texture2D( texture, pos.xy * res );
+   float posy = -world_pos.y;
 
-	// blend the results of the 3 planar projections.
-	vec4 tex = xaxis * blending.x + yaxis * blending.y + zaxis * blending.z;
+   float dist = distance;
+ 
+   // if this is not done, the result will look awful
+//   if(  pos.y > maxFogHeight)
+//   {		
+//       return vec3(0.5,0.6,0.9);
+//   }
+ 
+   // distance in fog is calculated with a simple intercept theorem
+   float distInFog = dist * (maxFogHeight - posy) / ( posy - cameraPos.y);
+ 
+   // when dist is 0, log(dist) is 1, so subtract this
+   float fogAmount = (log(distInFog * c) - 1) * b;
+ 
+   // at the top border, the value can get greater than 1, so clamp
+   fogAmount = clamp(fogAmount, 0, 1);
+ 
+   // final mix of colors
+   return mix(rgb, vec3(0.5,0.6,0.9), fogAmount);
+}
+
+vec4 mapZoom(sampler2D texture)
+{
+
+	//vec3 blending = abs( normal );
+	//blending = normalize(max(blending, 0.00001)); // Force weights to sum to 1.0
+	//float b = (blending.x + blending.y + blending.z);
+	//blending /= vec3(b, b, b);
+
+  //  vec3 blending = abs( normal );
+//	blending = normalize(max(blending, 0.00001)); // Force weights to sum to 1.0
+//	float b = (blending.x + (blending.y) + blending.z);
+//	blending /= vec3(b, b, b);
+
+
+    vec3 flip = vec3(normal.x < 0.0 ? -1 : 1, normal.y < 0.0 ? -1 : 1, normal.z < 0.0 ? -1 : 1);
+    vec3 blending = clamp(abs(normalize(normal)) - 0.5, 0.0, 1.0);
+    vec3 tmpPos = pos.xyz *flip;
+
+    blending *= blending; 
+    blending *= blending; 
+    blending /= dot(blending, vec3(1.0, 1.0, 1.0));
+
+    float t = 1.0f / (25000.0f / distance(cameraPos, world_pos.xyz));
+
+    vec4 xaxis = mix(texture2D(texture, pos.yz * res / 10 ),
+                       texture2D(texture, pos.yz * res / 200),
+                       t);
+
+    vec4 yaxis = mix(texture2D(texture, pos.xz * res / 10),
+                       texture2D(texture, pos.xz * res / 200),
+                       t);
+
+    vec4 zaxis = mix(texture2D(texture, pos.xy * res / 10 ),
+                       texture2D(texture, pos.xy * res / 200),
+                       t);
+
+    
+    vec4 tex = xaxis * blending.x + yaxis * blending.y + zaxis * blending.z;
+    //return vec4(t,t,t,tex.x);
 	return tex;
 }
 
+/*vec4 mapTriPlanar(sampler2D texture)
+{
+    
+    vec3 flip = vec3(normal.x < 0.0 ? -1 : 1, normal.y >= 0.0 ? -1 : 1, normal.z < 0.0 ? -1 : 1);
+    vec3 blend = saturate(abs(normalize(normal)) - 0.5);
+    vec3 tmpPos = pos.xyz * flip;
+
+    blend *= blend; 
+    blend *= blend; 
+    blend /= dot(blend, vec3(1.0, 1.0, 1.0));
+
+	//vec3 blending = abs( normal );
+	//blending = normalize(max(blending, 0.00001)); // Force weights to sum to 1.0
+	//float b = (blending.x + (-blending.y) + blending.z);
+	//blending /= vec3(b, b, b);
+
+	vec4 xaxis = texture2D( texture, tmpPos.yz * res *0.2);
+	vec4 yaxis = texture2D( texture, tmpPos.xz * res *0.2);
+	vec4 zaxis = texture2D( texture, tmpPos.xy * res *0.2);
+
+	// blend the results of the 3 planar projections.
+	vec4 tex = xaxis * blend.x + yaxis * blend.y + zaxis * blend.z;
+	return tex;
+}*/
+
 void main () 
 {
-	vec3 n1 = vec3(normal.x, -normal.y, normal.z);
-	float intensity = dot(vec3(0.9, 0.6, 0.2), n1) ;
+	vec3 n1 = normalize(vec3(normal.x, -normal.y, normal.z));
+	float intensity = clamp( dot( n1, vec3(0.4, 0.6, 0.2)), 0,1 );
+    
 
-	vec4 rock_color = mapTriPlanar(tex1);
+	
+    vec4 rock_normal = mapZoom(tex3) ;
+    vec4 grass_normal = mapZoom(tex4) ;
 
-	vec4 grass_color = mapTriPlanar(tex2) * 0.6;
+    float intensity_rock = dot(vec3(0.9, 0.6, 0.2), vec3(rock_normal.x, -rock_normal.y, rock_normal.z)) ;
+    float intensity_grass = dot(vec3(0.9, 0.6, 0.2), vec3(grass_normal.x, -grass_normal.y, grass_normal.z)) ;
+
+    vec4 rock_color = mapZoom(tex1) * intensity_rock * 2;
+
+	vec4 grass_color = mapZoom(tex2) * intensity_grass * 2;
 
 
-	float slope = 1.0f - (-normal.y);
-	vec4 normal_color = grass_color * 1.1;
+	float slope = 1.0f - (-normal.y) ;
+	vec4 normal_color = rock_color * 1.1;
 
 	vec4 textureColor;
 	float blendAmount = 0;
 
-	
-	if(slope < 0.1)
+	//normal_color = vec4(0,0.6,0.1,0) * 1.1;
+	if(slope < 0.1f)
     {
           blendAmount = slope / 0.1f;
           textureColor = mix(grass_color, normal_color, blendAmount);
     }
 	
-    if((slope < 0.3) && (slope >= 0.1f))
+
+    if((slope < 0.3f) && (slope >= 0.1f))
     {
         blendAmount = (slope - 0.1f) * (1.0f / (0.3f - 0.1f));
+		
         textureColor = mix(normal_color, rock_color, blendAmount);
     }
 
-    if(slope >= 0.3) 
+    if(slope >= 0.3f) 
     {
         textureColor = rock_color;
     }
 
-	//distance(cameraPos, pos) / 200
-	//vec3 color =  applyFog( vec3(textureColor.r, textureColor.g, textureColor.b) * (intensity) ,
-	//						 distance(cameraPos, world_pos.xyz),
-	//						 normalize(cameraPos - world_pos.xyz));
 
-	vec3 color =  applyFog2( vec3(textureColor.r, textureColor.g, textureColor.b) * (intensity) ,
+
+    vec3 MaterialAmbientColor = vec3(0.05, 0.05, 0.05) * textureColor.rgb;
+	//MaterialAmbientColor = vec3(0.7, 0.7, 0.7);
+
+	vec3 color =  applyFog3( vec3(MaterialAmbientColor.rgb + textureColor.rgb * intensity) ,
 							 distance(cameraPos, world_pos.xyz),
 							 normalize(cameraPos - world_pos.xyz));
 
-	
-	frag_colour = vec4(color.r, color.g, color.b, 1);
+   color =  applyFog2( color ,
+							 distance(cameraPos, world_pos.xyz),
+							 normalize(cameraPos - world_pos.xyz));
+
+	frag_colour = vec4(color.x, color.y, color.z, 1) ;
+	//vec3 colour =  vec3(MaterialAmbientColor.rgb + textureColor.rgb * intensity);
+
+//	frag_colour = vec4(0, 0, 0, 1) ;
+
+
+	//material.x = 1;
+	//if(int(material) == 1)
+	{
+	//	frag_colour = vec4(grass_color.xyz, 1)* intensity;
+	}
+	//else if (int(material) == 2)
+	{
+		//frag_colour = vec4(rock_color.xyz, 1)* intensity;
+	}
+//	else if (int(material) == 3)
+	{
+	//	frag_colour = vec4(vec3(MaterialAmbientColor.rgb + textureColor.rgb * intensity), 1);
+		//frag_colour = vec4(rock_color.xyz, 1) * 0.8f * intensity;
+	}
+
+
+
+    frag_colour = vec4(vec3(MaterialAmbientColor.rgb + textureColor.rgb * intensity), 1);
+	//frag_colour = vec4(vec3(MaterialAmbientColor.rgb  * intensity), 1);
+    
 }

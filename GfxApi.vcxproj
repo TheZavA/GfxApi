@@ -21,7 +21,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v110</PlatformToolset>
-    <CharacterSet>NotSet</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -42,14 +42,14 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>E:\OpenGLProjects\OpenGI\include;E:\cuda_toolkit\include;E:\OpenGLProjects\lib;F:\OglProject\GfxApi\tinyxml2;F:\OglProject\GfxApi\noisepp\threadpp;F:\OglProject\GfxApi\noisepp\core;E:\OpenGLProjects\lib\glew-1.9.0\include;E:\OpenGLProjects\lib\glfw-2.7.7\include;H:\kram von desktop\boost_1_55_0;$(IncludePath)</IncludePath>
+    <IncludePath>E:\OpenGLProjects\lib\bullet3-2.83.5\src;E:\OpenGLProjects\lib\assimp\include;E:\OpenGLProjects\OpenGI\include;E:\cuda_toolkit7\include;E:\OpenGLProjects\lib;F:\OglProject\GfxApi\tinyxml2;F:\OglProject\GfxApi\noisepp\threadpp;F:\OglProject\GfxApi\noisepp\core;E:\OpenGLProjects\lib\glew-1.9.0\include;E:\OpenGLProjects\lib\glfw-2.7.7\include;H:\kram von desktop\boost_1_55_0;$(IncludePath)</IncludePath>
     <ReferencePath>$(ReferencePath)</ReferencePath>
-    <LibraryPath>E:\OpenGLProjects\OpenGI\lib;E:\cuda_toolkit\lib\Win32;E:\OpenGLProjects\lib\glew-1.9.0\lib\Release\Win32;E:\OpenGLProjects\lib\glfw-2.7.7\lib-msvc110;E:\OpenGLProjects\lib\mgl\mgl\Debug;H:\kram von desktop\boost_1_55_0\stage\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>E:\OpenGLProjects\lib\bullet3-2.83.5\lib\Release;E:\OpenGLProjects\lib\assimp\lib32;E:\OpenGLProjects\OpenGI\lib;E:\cuda_toolkit7\lib\Win32;E:\OpenGLProjects\lib\glew-1.9.0\lib\Release\Win32;E:\OpenGLProjects\lib\glfw-2.7.7\lib-msvc110;E:\OpenGLProjects\lib\mgl\mgl\Debug;H:\kram von desktop\boost_1_55_0\stage\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>E:\OpenGLProjects\OpenGI\include;E:\cuda_toolkit\include;E:\OpenGLProjects\lib;F:\OglProject\GfxApi\tinyxml2;F:\OglProject\GfxApi\noisepp\threadpp;F:\OglProject\GfxApi\noisepp\core;E:\OpenGLProjects\lib\glew-1.9.0\include;E:\OpenGLProjects\lib\glfw-2.7.7\include;H:\kram von desktop\boost_1_55_0;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(IncludePath)</IncludePath>
-    <LibraryPath>E:\OpenGLProjects\OpenGI\lib;E:\cuda_toolkit\lib\Win32;E:\OpenGLProjects\lib\glew-1.9.0\lib\Release\Win32;E:\OpenGLProjects\lib\glfw-2.7.7\lib-msvc110;E:\OpenGLProjects\lib\mgl\mgl\Release;H:\kram von desktop\boost_1_55_0\stage\lib;$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSDK_LibraryPath_x86)</LibraryPath>
+    <IncludePath>E:\OpenGLProjects\lib\bullet3-2.83.5\src;E:\OpenGLProjects\lib\assimp\include;E:\OpenGLProjects\OpenGI\include;E:\cuda_toolkit7\include;E:\OpenGLProjects\lib;F:\OglProject\GfxApi\tinyxml2;F:\OglProject\GfxApi\noisepp\threadpp;F:\OglProject\GfxApi\noisepp\core;E:\OpenGLProjects\lib\glew-1.9.0\include;E:\OpenGLProjects\lib\glfw-2.7.7\include;H:\kram von desktop\boost_1_55_0;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(IncludePath)</IncludePath>
+    <LibraryPath>E:\OpenGLProjects\lib\bullet3-2.83.5\lib\Release;E:\OpenGLProjects\lib\assimp\lib32;E:\OpenGLProjects\OpenGI\lib;E:\cuda_toolkit7\lib\Win32;E:\OpenGLProjects\lib\glew-1.9.0\lib\Release\Win32;E:\OpenGLProjects\lib\glfw-2.7.7\lib-msvc110;E:\OpenGLProjects\lib\mgl\mgl\Release;H:\kram von desktop\boost_1_55_0\stage\lib;$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSDK_LibraryPath_x86)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -58,6 +58,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;GLEW_STATIC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);NOMINMAX;MATH_ENABLE_UNCOMMON_OPERATIONS</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -74,6 +75,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);NOMINMAX;MATH_ENABLE_UNCOMMON_OPERATIONS</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -90,32 +92,38 @@
     <ClInclude Include="cubelib\cube.inl.hpp" />
     <ClInclude Include="cubelib\logic_utility.hpp" />
     <ClInclude Include="GfxApi.h" />
+    <ClInclude Include="glcommon.h" />
+    <ClInclude Include="Input.h" />
     <ClInclude Include="MainClass.h" />
     <ClInclude Include="ocl.h" />
     <ClInclude Include="tinyxml2\tinyxml2.h" />
-    <ClInclude Include="TOctree.h" />
-    <ClInclude Include="TQueueLocked.h" />
-    <ClInclude Include="voxel\Chunk.h" />
+    <ClInclude Include="voxel\AABBTree.h" />
     <ClInclude Include="voxel\ChunkManager.h" />
+    <ClInclude Include="voxel\common.h" />
+    <ClInclude Include="voxel\HashMap.h" />
+    <ClInclude Include="voxel\intersection.h" />
+    <ClInclude Include="voxel\NodeChunk.h" />
     <ClInclude Include="voxel\octree.h" />
     <ClInclude Include="voxel\qef.h" />
-    <ClInclude Include="voxel\Clipmap.h" />
     <ClInclude Include="voxel\svd.h" />
     <ClInclude Include="voxel\TBorderVolume3d.h" />
+    <ClInclude Include="voxel\TerrainLayer.h" />
+    <ClInclude Include="voxel\TOctree.h" />
+    <ClInclude Include="voxel\TQueueLocked.h" />
     <ClInclude Include="voxel\TVolume2d.h" />
     <ClInclude Include="voxel\TVolume3d.h" />
     <ClInclude Include="voxel\TVolumePool.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GfxApi.cpp" />
+    <ClCompile Include="Input.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MainClass.cpp" />
     <ClCompile Include="tinyxml2\tinyxml2.cpp" />
-    <ClCompile Include="voxel\Chunk.cpp" />
     <ClCompile Include="voxel\ChunkManager.cpp" />
+    <ClCompile Include="voxel\NodeChunk.cpp" />
     <ClCompile Include="voxel\octree.cpp" />
     <ClCompile Include="voxel\qef.cpp" />
-    <ClCompile Include="voxel\Clipmap.cpp" />
     <ClCompile Include="voxel\svd.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -127,6 +135,7 @@
     <None Include="shader\chunk.vs" />
   </ItemGroup>
   <ItemGroup>
+    <Library Include="..\lib\assimp-3.1.1\lib\Release\assimp.lib" />
     <Library Include="..\OpenGI\lib\OpenGI.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

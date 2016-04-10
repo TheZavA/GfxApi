@@ -3,7 +3,7 @@
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/array.hpp>
-#include "cubelib/cube.hpp"
+#include "../cubelib/cube.hpp"
 
 template<class T>
 class TOctree

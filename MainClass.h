@@ -1,13 +1,13 @@
 #ifndef _MAINCLASS_H
 #define _MAINCLASS_H
 
-#include "GfxApi.h"
+
 
 #include <string>
 #include "mgl/MathGeoLib.h"
 #include <boost/format.hpp>
 #include <boost/shared_ptr.hpp>
-
+#include "GfxApi.h"
 
 void initText2D(const char * texturePath);
 void printText2D(const char * text, int x, int y, int size);
@@ -17,12 +17,14 @@ void cleanupText2D();
 struct GLFWwindow;
 
 class ChunkManager;
+class Input;
 
 namespace GfxApi
 {
-    class RenderNode;
-    class Input;
+    struct RenderNode;
+
 }
+
 
 
 class MainClass
@@ -75,15 +77,22 @@ private:
 
     bool m_bHideTerrain;
 
-    bool m_bDoClipmapUpdate;
-
-    boost::shared_ptr<GfxApi::Input> m_pInput;
+    boost::shared_ptr<Input> m_pInput;
 
     tick_t m_lastTick;
 
     std::vector<boost::shared_ptr<GfxApi::RenderNode>> m_meshList;
 
     boost::shared_ptr<ChunkManager> m_pChunkManager;
+
+	boost::shared_ptr<GfxApi::IndexBuffer> m_pIndices;
+	boost::shared_ptr<GfxApi::VertexBuffer> m_pVertices;
+	boost::shared_ptr<GfxApi::Mesh> m_pMesh;
+
+	boost::shared_ptr<GfxApi::Texture> m_tex;
+	boost::shared_ptr<GfxApi::Texture> m_tex1;
+	boost::shared_ptr<GfxApi::Texture> m_tex2;
+	boost::shared_ptr<GfxApi::Texture> m_tex3;
 
 };
 

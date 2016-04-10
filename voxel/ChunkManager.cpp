@@ -1,6 +1,6 @@
 #include "ChunkManager.h"
 
-#include "Chunk.h"
+#include "NodeChunk.h"
 
 #include <boost/make_shared.hpp>
 #include <boost/scoped_ptr.hpp>
@@ -10,6 +10,7 @@
 //#include "../cubelib/cube.hpp"
 
 #include <minmax.h>
+#include <deque>
 
 #include "../GfxApi.h"
 
@@ -17,229 +18,851 @@
 
 #include "../ocl.h"
 
-
-#include "Clipmap.h"
-
-ChunkManager::ChunkManager(Frustum& camera)
+ChunkManager::ChunkManager( Frustum& camera )
+   : m_chunks_pending( 0 )
 {
-   
-    m_ocl = boost::make_shared<ocl_t>(0,0);
-    std::vector<std::string> sources;
-    
-    
-    sources.push_back("scan_kernel.cl");
-    sources.push_back("noisetest.cl");
-    sources.push_back("chunk_kernel.cl");
-    
-    m_ocl->load_cl_source(sources);
 
-    boost::shared_ptr<GfxApi::Shader> vs = boost::make_shared<GfxApi::Shader>(GfxApi::ShaderType::VertexShader);
-    vs->LoadFromFile(GfxApi::ShaderType::VertexShader, "shader/chunk.vs");
+   m_pCellBuffer = boost::make_shared<TVolume3d<cell_t*>>( ChunkManager::CHUNK_SIZE + 4, ChunkManager::CHUNK_SIZE + 4, ChunkManager::CHUNK_SIZE + 4 );
 
-    boost::shared_ptr<GfxApi::Shader> ps = boost::make_shared<GfxApi::Shader>(GfxApi::ShaderType::PixelShader);
-    ps->LoadFromFile(GfxApi::ShaderType::PixelShader, "shader/chunk.ps");
+   m_ocl = boost::make_shared<ocl_t>( 0, 0 );
+   std::vector<std::string> sources;
 
-    auto sp = boost::make_shared<GfxApi::ShaderProgram>();
-    sp->attach(*vs);
-    sp->attach(*ps);
 
-    boost::shared_ptr<GfxApi::Shader> vs1 = boost::make_shared<GfxApi::Shader>(GfxApi::ShaderType::VertexShader);
-    vs1->LoadFromFile(GfxApi::ShaderType::VertexShader, "shader/line.vs");
+   sources.push_back( "scan_kernel.cl" );
+   sources.push_back( "noisetest.cl" );
+   sources.push_back( "chunk_kernel.cl" );
 
-    boost::shared_ptr<GfxApi::Shader> ps1 = boost::make_shared<GfxApi::Shader>(GfxApi::ShaderType::PixelShader);
-    ps1->LoadFromFile(GfxApi::ShaderType::PixelShader, "shader/line.ps");
+   m_ocl->load_cl_source( sources );
 
-    auto sp1 = boost::make_shared<GfxApi::ShaderProgram>();
-    sp1->attach(*vs1);
-    sp1->attach(*ps1);
+   boost::shared_ptr<GfxApi::Shader> vs = boost::make_shared<GfxApi::Shader>( GfxApi::ShaderType::VertexShader );
+   vs->LoadFromFile( GfxApi::ShaderType::VertexShader, "shader/chunk.vs" );
 
-    m_shaders.push_back(sp);
-    m_shaders.push_back(sp1);
+   boost::shared_ptr<GfxApi::Shader> ps = boost::make_shared<GfxApi::Shader>( GfxApi::ShaderType::PixelShader );
+   ps->LoadFromFile( GfxApi::ShaderType::PixelShader, "shader/chunk.ps" );
 
-    std::thread chunkLoadThread(&ChunkManager::chunkLoaderThread, this);
-	chunkLoadThread.detach();
+   auto sp = boost::make_shared<GfxApi::ShaderProgram>();
+   sp->Attach( *vs );
+   sp->Attach( *ps );
 
-    m_pClipmap = boost::make_shared<Clipmap>(camera.pos, MAX_LOD_LEVEL, LOD_MIN_RES, 3, this);
+   boost::shared_ptr<GfxApi::Shader> vs1 = boost::make_shared<GfxApi::Shader>( GfxApi::ShaderType::VertexShader );
+   vs1->LoadFromFile( GfxApi::ShaderType::VertexShader, "shader/line.vs" );
+
+   boost::shared_ptr<GfxApi::Shader> ps1 = boost::make_shared<GfxApi::Shader>( GfxApi::ShaderType::PixelShader );
+   ps1->LoadFromFile( GfxApi::ShaderType::PixelShader, "shader/line.ps" );
+
+   auto sp1 = boost::make_shared<GfxApi::ShaderProgram>();
+   sp1->Attach( *vs1 );
+   sp1->Attach( *ps1 );
+
+   m_shaders.push_back( sp );
+   m_shaders.push_back( sp1 );
+
+   std::thread chunkLoadThread( &ChunkManager::chunkLoaderThread, this );
+   chunkLoadThread.detach();
+
+   std::thread chunkContourThread( &ChunkManager::chunkContourThread, this );
+   chunkContourThread.detach();
+
+   //std::thread chunkLoadThread1(&ChunkManager::chunkLoaderThread, this);
+   //chunkLoadThread1.detach();
+
+   AABB rootBounds( float3( ( float ) camera.pos.x - WORLD_BOUNDS_MAX_XZ, ( float ) camera.pos.y - WORLD_BOUNDS_MAX_XZ, ( float ) camera.pos.z - WORLD_BOUNDS_MAX_XZ ),
+                    float3( ( float ) WORLD_BOUNDS_MAX_XZ + ( float ) camera.pos.x, ( float ) WORLD_BOUNDS_MAX_Y + ( float ) camera.pos.y, ( float ) WORLD_BOUNDS_MAX_XZ + ( float ) camera.pos.z ) );
+
+   m_scene_next = createScene( rootBounds );
 
 }
 
-
-void ChunkManager::resetClipmap(Frustum& camera)
+boost::shared_ptr<ChunkManager::LODScene> ChunkManager::createScene( const AABB& world_bounds )
 {
-    m_pClipmap.reset();
-    
-    m_pClipmap = boost::make_shared<Clipmap>(camera.pos, MAX_LOD_LEVEL, LOD_MIN_RES, 3, this);
+   boost::shared_ptr<NodeChunk> pChunk = boost::make_shared<NodeChunk>( 1.0f, world_bounds, this, false );
+
+   m_pOctTree.reset( new ChunkTree( nullptr, nullptr, pChunk, 1, cube::corner_t::get( 0, 0, 0 ) ) );
+
+   pChunk->m_pTree = m_pOctTree;
+
+   m_pOctTree->split();
+
+   auto scene = boost::make_shared <LODScene>( ChunkManager::MAX_LOD_LEVEL + 6 );
+
+   for( auto& corner : cube::corner_t::all() )
+   {
+      uint8_t level = m_pOctTree->getChild( corner )->getLevel();
+      m_chunks_pending++;
+      initTree( m_pOctTree->getChild( corner ) );
+      ( *scene )[level].insert( m_pOctTree->getChild( corner )->getValue() );
+      m_visibles.insert( m_pOctTree->getChild( corner )->getValue() );
+   }
+
+   return scene;
+}
+
+void ChunkManager::initTree( ChunkTree&  pChild )
+{
+   boost::shared_ptr<NodeChunk>& pChunk = pChild.getValue();
+
+
+   AABB bounds = pChild.getParent()->getValue()->m_chunk_bounds;
+
+   float3 center = bounds.CenterPoint();
+   float3 c0 = bounds.CornerPoint( pChild.getCorner().index() );
+
+   AABB b0( float3( std::min( c0.x, center.x ),
+                    std::min( c0.y, center.y ),
+                    std::min( c0.z, center.z ) ),
+            float3( std::max( c0.x, center.x ),
+                    std::max( c0.y, center.y ),
+                    std::max( c0.z, center.z ) ) );
+
+   pChunk = boost::make_shared<NodeChunk>( 1.0f / pChild.getLevel(), b0, this );
+
+   //pChunk->m_pTree = &pChild;
+
+   pChunk->m_workInProgress = boost::make_shared<bool>( true );
+
+   m_nodeChunkGeneratorQueue.push( pChild.getValueCopy() );
+
+}
+
+void ChunkManager::initTree( boost::shared_ptr<ChunkTree> pChild )
+{
+   boost::shared_ptr<NodeChunk>& pChunk = pChild->getValue();
+
+
+   AABB bounds = pChild->getParent()->getValue()->m_chunk_bounds;
+
+   float3 center = bounds.CenterPoint();
+
+   float3 c0 = bounds.CornerPoint( pChild->getCorner().index() );
+
+   // @TODO this is still not working right on the Y axis...
+   AABB b0( float3( std::min( c0.x, center.x ) + pChild->getParent()->getValue()->m_scale / 4,
+                    std::min( c0.y, center.y ) + pChild->getParent()->getValue()->m_scale / 4,
+                    std::min( c0.z, center.z ) + pChild->getParent()->getValue()->m_scale / 4 ),
+            float3( std::max( c0.x, center.x ) + pChild->getParent()->getValue()->m_scale / 4,
+                    std::max( c0.y, center.y ) + pChild->getParent()->getValue()->m_scale / 4,
+                    std::max( c0.z, center.z ) + pChild->getParent()->getValue()->m_scale / 4 ) );
+
+   pChunk = boost::make_shared<NodeChunk>( 1.0f / pChild->getLevel(), b0, this, false );
+
+   pChunk->m_pTree = pChild;
+
+   pChunk->m_workInProgress = boost::make_shared<bool>( true );
+
+   m_nodeChunkGeneratorQueue.push( pChild->getValueCopy() );
+
+}
+
+void ChunkManager::initTreeNoQueue( boost::shared_ptr<ChunkTree> pChild )
+{
+   boost::shared_ptr<NodeChunk>& pChunk = pChild->getValue();
+
+
+   AABB bounds = pChild->getParent()->getValue()->m_chunk_bounds;
+
+   float3 center = bounds.CenterPoint();
+
+   float3 c0 = bounds.CornerPoint( pChild->getCorner().index() );
+
+   // @TODO this is still not working right on the Y axis...
+   AABB b0( float3( std::min( c0.x, center.x ) + pChild->getParent()->getValue()->m_scale / 4,
+                    std::min( c0.y, center.y ) + pChild->getParent()->getValue()->m_scale / 4,
+                    std::min( c0.z, center.z ) + pChild->getParent()->getValue()->m_scale / 4 ),
+            float3( std::max( c0.x, center.x ) + pChild->getParent()->getValue()->m_scale / 4,
+                    std::max( c0.y, center.y ) + pChild->getParent()->getValue()->m_scale / 4,
+                    std::max( c0.z, center.z ) + pChild->getParent()->getValue()->m_scale / 4 ) );
+
+   pChunk = boost::make_shared<NodeChunk>( 1.0f / pChild->getLevel(), b0, this, false );
+
+   pChunk->m_pTree = pChild;
+
+}
+
+bool ChunkManager::isAcceptablePixelError( float3& cameraPos, ChunkTree& tree )
+{
+   const AABB& box = tree.getValue()->m_chunk_bounds;
+
+   const AABB& rootBounds = tree.getRoot()->getValue()->m_chunk_bounds;
+
+   //World length of highest LOD node
+   float x_0 = rootBounds.Size().Length() / math::Pow( 2, ( float ) MAX_LOD_LEVEL );
+
+   //All nodes within this distance will surely be rendered
+   //float f_0 = x_0 * 1.9f;
+   float f_0 = x_0 * 1.5f;
+
+   float3 delta = cameraPos - box.CenterPoint();
+   //Node distance from camera
+   //float d = std::max(f_0, box.CenterPoint().Distance(cameraPos));
+   float d = std::max( f_0, std::max( abs( delta.x ), std::max( abs( delta.y ), abs( delta.z ) ) ) );
+
+   //Minimum optimal node level
+   float n_opt = ( float ) MAX_LOD_LEVEL - math::Log2( d / f_0 );
+
+   float size_opt = rootBounds.Size().Length() / math::Pow( 2, n_opt );
+
+   return size_opt > box.Size().Length();
 }
 
 
-void ChunkManager::chunkLoaderThread() 
+void ChunkManager::updateLoDTree( Frustum& camera )
 {
-    //this has to be in ms or something, not framerate, but time!
-    //int frameRate = 60;
-    typedef boost::chrono::high_resolution_clock Clock;
-    //60 fps is ~15 ms / frame
-    std::chrono::milliseconds frametime( 15 );
-    bool did_some_work = false;
-    while(1) 
-    {
-    
-        did_some_work = false;
 
-        std::size_t max_chunks_per_frame = 5;
+   /// get the next chunk off the queue that needs its mesh created / uploaded
+   for( std::size_t i = 0; i < 2; ++i )
+   {
+      auto chunk = m_nodeChunkMeshGeneratorQueue.pop();
+      if( !chunk )
+      {
+         continue;
+      }
 
-        for (std::size_t i = 0; i < max_chunks_per_frame; ++i)
-        {
+      if( chunk->m_bHasNodes )
+      {
+         chunk->createMesh();
+      }
+      //std::cout << m_chunks_pending << "\n";
+      m_chunks_pending--;
+   }
 
-            auto& chunk = m_chunkGeneratorQueue.pop();
+   /// see if there is a scene pending and ready
+   if( m_scene_next && ( m_chunks_pending == 0 ) )
+   {
+      m_scene_current = m_scene_next;
+      m_scene_next.reset();
+      return;
+   }
+   else if( m_scene_next && ( m_chunks_pending > 0 ) )
+   {
+      /// a scene is pending generation, step out here
+      return;
+   }
 
-            if(!chunk)
+   NodeChunks::iterator l = m_visibles.begin();
+   /// check if a new scene needs to be generated
+   bool needs_update = false;
+   while( l != m_visibles.end() )
+   {
+      ChunkTree* visible = ( *l )->m_pTree.get();
+      ChunkTree* parent = visible->getParent();
+
+      bool parent_acceptable_error = !parent->isRoot() && isAcceptablePixelError( camera.pos, *parent );
+      bool acceptable_error = isAcceptablePixelError( camera.pos, *visible );
+
+      if( parent_acceptable_error || !acceptable_error )
+      {
+         needs_update = true;
+         break;
+      }
+      ++l;
+   }
+
+   /// check if we need to generate a new scene
+   if( !needs_update )
+   {
+      /// nothing to be done
+      return;
+   }
+
+   /// create a new empty scene
+   auto scene_next = boost::make_shared <LODScene>( ChunkManager::MAX_LOD_LEVEL + 6 );
+
+   std::deque< boost::shared_ptr< NodeChunk > > chunkQueue;
+
+   NodeChunks::iterator w = m_visibles.begin();
+
+   //while( w != m_visibles.end() )
+   //{
+   //   chunkQueue.push_back( *w );
+   //   ++w;
+   //}
+
+   //w = m_visibles.begin();
+
+   //m_visibles.clear();
+
+   //while( chunkQueue.size() > 0 )
+   //{
+   //   auto chunk = chunkQueue.front();
+   //   chunkQueue.pop_front();
+
+   //   ChunkTree* leaf = chunk->m_pTree.get();
+   //   ChunkTree* parent = leaf->getParent();
+
+   //   bool parent_acceptable_error = !parent->isRoot() && isAcceptablePixelError( camera.pos, *parent );
+   //   bool acceptable_error = isAcceptablePixelError( camera.pos, *leaf );
+
+   //   if( parent_acceptable_error )
+   //   {
+   //      uint8_t parent_level = parent->getLevel();
+   //      /// Add the parent to visibles
+   //      //m_visibles.insert( parent->getValue() );
+   //      ( *scene_next )[parent_level].insert( parent->getValue() );
+
+   //      if( leaf->hasChildren() )
+   //      {
+   //         for( auto& corner : cube::corner_t::all() )
+   //         {
+   //            if( leaf->getChild( corner )->hasChildren() )
+   //            {
+   //               for( auto& c_corner : cube::corner_t::all() )
+   //               {
+   //                  auto c_child = leaf->getChild( corner )->getChild( c_corner );
+   //                  if( c_child->getValue() )
+   //                     c_child->getValue()->m_pTree.reset();
+   //               }
+   //               leaf->getChild( corner )->join();
+   //            }
+   //         }
+   //      }
+   //   }
+   //   else if( acceptable_error )
+   //   {
+   //      /// Let things stay the same
+   //      //m_visibles.insert( leaf->getValue() );
+   //      ( *scene_next )[leaf->getLevel()].insert( leaf->getValue() );
+   //   }
+   //   else
+   //   {
+   //      //if( leaf->getValue()->m_bHasNodes )
+   //      {
+
+   //         /// If visible doesn't have children
+   //         if( !leaf->hasChildren() )
+   //         {
+   //            /// Create children for visible
+   //            leaf->split();
+   //            for( auto& corner : cube::corner_t::all() )
+   //            {
+   //               initTreeNoQueue( leaf->getChild( corner ) );
+   //               //m_chunks_pending++;
+   //               chunkQueue.push_back( leaf->getChild( corner )->getValue() );
+   //            }
+   //         }
+
+   //         /// Foreach child of visible
+   //         for( auto& corner : cube::corner_t::all() )
+   //         {
+   //            uint8_t level = leaf->getChild( corner )->getLevel();
+   //            //m_visibles.insert( leaf->getChild( corner )->getValue() );
+   //            if( isAcceptablePixelError( camera.pos, *leaf->getChild( corner ) ) )
+   //            {
+
+   //               //if( leaf->getValue()->m_occupation[corner.x_i()][corner.y_i()][corner.z_i()] )
+   //               {
+   //                  initTree( leaf->getChild( corner ) );
+   //                  m_chunks_pending++;
+   //                  ( *scene_next )[level].insert( leaf->getChild( corner )->getValue() );
+   //               }
+
+   //            }
+   //            else
+   //            {
+   //               int test = 0;
+   //               //
+   //            }
+
+   //         }
+   //      }
+   //   }
+
+
+   //      
+   //}
+
+   // loop through the current visible nodes, act accordingly
+   while( w != m_visibles.end() )
+   {
+      if( !( *w )->m_pTree )
+      {
+         ++w;
+         continue;
+      }
+
+      ChunkTree* leaf = ( *w )->m_pTree.get();
+      ChunkTree* parent = leaf->getParent();
+      // If this is the root node, just move on.
+      if( !parent )
+      {
+         ++w;
+         continue;
+      }
+
+
+      bool parent_acceptable_error = !parent->isRoot() && isAcceptablePixelError( camera.pos, *parent );
+      bool acceptable_error = isAcceptablePixelError( camera.pos, *leaf );
+
+      if( parent_acceptable_error )
+      {
+         uint8_t parent_level = parent->getLevel();
+         /// Add the parent to visibles
+         m_visibles.insert( parent->getValue() );
+         ( *scene_next )[parent_level].insert( parent->getValue() );
+
+         if( leaf->hasChildren() )
+         {
+            for( auto& corner : cube::corner_t::all() )
             {
-                continue;
+               if( leaf->getChild( corner )->hasChildren() )
+               {
+                  for( auto& c_corner : cube::corner_t::all() )
+                  {
+                     auto c_child = leaf->getChild( corner )->getChild( c_corner );
+                     if( c_child->getValue() )
+                        c_child->getValue()->m_pTree.reset();
+                  }
+                  leaf->getChild( corner )->join();
+               }
             }
-           
-            auto t1 = Clock::now();
-         
-            chunk->generateDensities();
- 
+         }
 
-            chunk->classifyEdges();
-        
-                
-            if(chunk->m_bHasNodes && chunk->m_edgesCompact && chunk->m_edgesCompact->size() > 0)
+         std::set< boost::shared_ptr<NodeChunk> >::iterator e = w;
+         ++w;
+         m_visibles.erase( e );
+         continue;
+
+      }
+      else if( acceptable_error )
+      {
+         /// Let things stay the same
+         ( *scene_next )[leaf->getLevel()].insert( leaf->getValue() );
+      }
+      else
+      {
+         //if( leaf->getValue()->m_bHasNodes )
+         {
+
+            /// If visible doesn't have children
+            if( !leaf->hasChildren() )
             {
-                chunk->generateZeroCross();
-                chunk->generateFullEdges();
+               /// Create children for visible
+               leaf->split();
+               for( auto& corner : cube::corner_t::all() )
+               {
+                  initTreeNoQueue( leaf->getChild( corner ) );
+                  //m_chunks_pending++;
+               }
             }
 
-            if(!chunk->m_bHasNodes)
+            /// Foreach child of visible
+            for( auto& corner : cube::corner_t::all() )
             {
-                chunk->m_edgesCompact.reset();
-                chunk->m_workInProgress.reset();
-                did_some_work = true;
-                continue;
+               uint8_t level = leaf->getChild( corner )->getLevel();
+               m_visibles.insert( leaf->getChild( corner )->getValue() );
+               if( isAcceptablePixelError( camera.pos, *leaf->getChild( corner ) ) )
+               {
+
+                  //if( leaf->getValue()->m_occupation[corner.x_i()][corner.y_i()][corner.z_i()] )
+                  {
+                     initTree( leaf->getChild( corner ) );
+                     m_chunks_pending++;
+                     ( *scene_next )[level].insert( leaf->getChild( corner )->getValue() );
+                  }
+
+               }
+
             }
 
+            /// Remove visible from visibles
+            std::set< boost::shared_ptr<NodeChunk> >::iterator e = w;
+            ++w;
+            m_visibles.erase( e );
+            continue;
 
-            assert(chunk->m_zeroCrossCompact != 0);
-            chunk->buildTree(ChunkManager::CHUNK_SIZE, 1.0f);
+         }
+      }
+      ++w;
+   }
+
+   /// finally set the next scene to the new scene
+   m_scene_next = scene_next;
+
+}
+
+void ChunkManager::updateLoDTree2( Frustum& camera )
+{
+
+   /// get the next chunk off the queue that needs its mesh created / uploaded
+   for( std::size_t i = 0; i < 4; ++i )
+   {
+      auto chunk = m_nodeChunkMeshGeneratorQueue.pop();
+      if( !chunk )
+      {
+         continue;
+      }
+
+      chunk->m_bGenerated = true;
+
+      
+      if( chunk->m_bHasNodes )
+      {
+         chunk->createMesh();
+      }
+      //std::cout << m_chunks_pending << "\n";
+      //m_chunks_pending--;
+   }
+
+
+   /// create a new empty scene
+   //auto scene_next = boost::make_shared <LODScene>( ChunkManager::MAX_LOD_LEVEL + 6 );
+
+   //std::deque< boost::shared_ptr< NodeChunk > > chunkQueue;
+
+   NodeChunks::iterator w = m_visibles.begin();
+
+
+   // loop through the current visible nodes, act accordingly
+   while( w != m_visibles.end() )
+   {
+
+      if( !( *w ) )
+      {
+         std::set< boost::shared_ptr<NodeChunk> >::iterator e = w;
+         ++w;
+         m_visibles.erase( e );
+         continue;
+      }
+
+      if( !( *w )->m_pTree )
+      {
+         ++w;
+         continue;
+      }
+
+      ChunkTree* leaf = ( *w )->m_pTree.get();
+      ChunkTree* parent = leaf->getParent();
+      // If this is the root node, just move on.
+      if( !parent )
+      {
+         ++w;
+         continue;
+      }
+
+
+      bool parent_acceptable_error = !parent->isRoot() && isAcceptablePixelError( camera.pos, *parent );
+      bool acceptable_error = isAcceptablePixelError( camera.pos, *leaf );
+
+      if( parent_acceptable_error )
+      {
+         uint8_t parent_level = parent->getLevel();
+         /// Add the parent to visibles
+         m_visibles.insert( parent->getValue() );
+
+         if( leaf->hasChildren() )
+         {
+            for( auto& corner : cube::corner_t::all() )
+            {
+               if( leaf->getChild( corner )->hasChildren() )
+               {
+                  for( auto& c_corner : cube::corner_t::all() )
+                  {
+                     auto c_child = leaf->getChild( corner )->getChild( c_corner );
+                     if( c_child->getValue() )
+                        c_child->getValue()->m_pTree.reset();
+                  }
+                  leaf->getChild( corner )->join();
+               }
+            }
+         }
+
+         std::set< boost::shared_ptr<NodeChunk> >::iterator e = w;
+         ++w;
+         m_visibles.erase( e );
+         continue;
+
+      }
+      else if( acceptable_error )
+      {
+         /// Let things stay the same
+      }
+      else
+      {
+         if( leaf->getValue()->m_bHasNodes )
+         {
+
+            /// If visible doesn't have children
+            if( !leaf->hasChildren() )
+            {
+               /// Create children for visible
+               leaf->split();
+               /// Foreach child of visible
+            }
+
+               for( auto& corner : cube::corner_t::all() )
+               {
+
+                  auto& chunkRef = leaf->getChild( corner );
+                  //if( isAcceptablePixelError( camera.pos, *leaf->getChild( corner ) ) )
+                  {
+                     initTree( chunkRef );
+                     m_visibles.insert( chunkRef->getValue() );
+                     m_visiblesTemp.insert( leaf->getValue() );
+                  }
+               }
             
-            if(chunk->m_pOctreeNodes)
+   
             {
-                (*(chunk->m_pOctreeNodes)).clear();
+               //if( allNodesGenerated )
+               {
+                  /// Remove visible from visibles
+                  
+                  std::set< boost::shared_ptr<NodeChunk> >::iterator e = w;
+                  ++w;
+                  m_visibles.erase( e );
+                  continue;
+               }
             }
 
-            chunk->m_edgesCompact.reset();
-            chunk->m_cornersCompact.reset();
-            chunk->m_zeroCrossCompact.reset();
 
+
+         }
+      }
+      ++w;
+   }
+
+   /// finally set the next scene to the new scene
+   //m_scene_next = scene_next;
+
+
+   NodeChunks::iterator w1 = m_visiblesTemp.begin();
+
+
+   // loop through the current visible nodes, act accordingly
+   while( w1 != m_visiblesTemp.end() )
+   {
+      ChunkTree* leaf = ( *w1 )->m_pTree.get();
+      ChunkTree* parent = leaf->getParent();
+      // If this is the root node, just move on.
+      if( !parent )
+      {
+         ++w1;
+         continue;
+      }
+
+      bool allNodesGenerated = true;
+
+      for( auto& corner : cube::corner_t::all() )
+      {
+         auto& chunkRef = leaf->getChild( corner );
+
+         if( chunkRef && chunkRef->getValue() && chunkRef->getValue()->m_bGenerated == false )
+         {
+            allNodesGenerated = false;
+         }
+      }
+
+      if( allNodesGenerated )
+      {
+         /// Remove visible from visibles
+
+         std::set< boost::shared_ptr<NodeChunk> >::iterator e = w1;
+         ++w1;
+         m_visiblesTemp.erase( e );
+         continue;
+      }
+      ++w1;
+   }
+
+}
+
+
+void ChunkManager::chunkLoaderThread()
+{
+   //this has to be in ms or something, not framerate, but time!
+   //int frameRate = 60;
+   typedef boost::chrono::high_resolution_clock Clock;
+   typedef boost::chrono::milliseconds ms;
+   //60 fps is ~15 ms / frame
+   std::chrono::milliseconds frametime( 25 );
+   bool did_some_work = false;
+   while( 1 )
+   {
+
+      did_some_work = false;
+
+      std::size_t max_chunks_per_frame = 5;
+
+      for( std::size_t i = 0; i < 30; ++i )
+      {
+
+         auto& chunk = m_nodeChunkClassifyQueue.pop();
+
+         if( !chunk )
+         {
+            continue;
+         }
+
+         auto parent = chunk->m_pTree->getParent();
+
+         //if( !parent )
+         // break;
+
+         if( !parent->isRoot() && !parent->getValue()->m_bClassified )
+         {
+            m_nodeChunkClassifyQueue.push( parent->getValue() );
+            m_nodeChunkClassifyQueue.push( chunk );
+            continue;
+         }
+
+         if( !parent->isRoot() && parent->getValue()->m_bClassified && !parent->getValue()->m_bHasNodes )
+         {
+            chunk->m_bHasNodes = false;
+            continue;
+         }
+
+         chunk->generateDensities();
+         chunk->classifyEdges();
+
+         chunk->m_bClassified = true;
+
+      }
+
+
+      for( std::size_t i = 0; i < max_chunks_per_frame; ++i )
+      {
+         auto& chunk = m_nodeChunkGeneratorQueue.pop();
+
+         if( !chunk )
+         {
+            continue;
+         }
+
+         auto parent = chunk->m_pTree->getParent();
+
+         //if( !parent )
+           // break;
+
+         //std::vector<boost::chrono::duration<int_least64_t, boost::nano>> times;
+
+         ////auto t1 = Clock::now();
+         chunk->generateDensities();
+         ////auto t22 = Clock::now();
+         ////times.push_back( t22 - t1 );
+
+         ////auto t11 = Clock::now();
+         chunk->classifyEdges();
+         ////auto t222 = Clock::now();
+         ////times.push_back( t222 - t11 );
+
+         chunk->m_bClassified = true;
+
+         //continue;
+
+         if( chunk->m_bHasNodes /*&& chunk->m_edgesCompact && chunk->m_edgesCompact->size() > 0*/ )
+         {
+            chunk->generateZeroCross();
+            chunk->generateFullEdges();
+         }
+         if( !chunk->m_bHasNodes )
+         {
+            chunk->m_edgesCompact.reset();
             chunk->m_workInProgress.reset();
             did_some_work = true;
-            auto t2 = Clock::now();
+            m_nodeChunkMeshGeneratorQueue.push( chunk );
 
-           // std::cout << t2 - t1 << '\n';
+            // auto t2 = Clock::now();
+            // times.push_back( t2 - t1 );
 
-        }
-
-
-        std::size_t max_rings_per_frame = 1;
-
-        for (std::size_t i = 0; i < max_rings_per_frame; ++i)
-        {
-
-            auto& p_ring = m_ring_generator_queue.pop();
-
-            if(!p_ring)
-            {
-                continue;
-            }
-
-            if(!p_ring->allChunksGenrated())
-            {
-                //std::cout << "skipping a chunk" << std::endl;
-                m_ring_generator_queue.push(p_ring);
-                continue;
-            }
-
-            int index_count = 0;
-            for(int y = 0; y < p_ring->m_n; y++)
-            {
-                for(int z = 0; z < p_ring->m_n; z++)
+             /*   for( auto& entry : times )
                 {
-                    for(int x = 0; x < p_ring->m_n; x++)
-                    {
-               
-                         auto& chunk = (*p_ring->m_pChunks)(x, y, z);
-                         for(auto entry : chunk->m_seam_nodes)
-                         {
-                            float3 pos = chunk->m_basePos + float3(chunk->m_x, chunk->m_y, chunk->m_z) * chunk->m_scale * (ChunkManager::CHUNK_SIZE) ;
-                            float3 checkPos = pos + float3(1,1,1) * (chunk->m_scale * (ChunkManager::CHUNK_SIZE) / 2);
-                            
-                            if(p_ring->m_ring_bounds_inner.Contains(checkPos))
-                            {
-                                continue;
-                            }
-
-                            entry.minx = entry.minx + (chunk->m_x * ChunkManager::CHUNK_SIZE);
-                            entry.miny = entry.miny + (chunk->m_y * ChunkManager::CHUNK_SIZE);
-                            entry.minz = entry.minz + (chunk->m_z * ChunkManager::CHUNK_SIZE);
-
-                            entry.drawInfo.position.x += (float)chunk->m_x * (float)ChunkManager::CHUNK_SIZE;
-                            entry.drawInfo.position.y += (float)chunk->m_y * (float)ChunkManager::CHUNK_SIZE;
-                            entry.drawInfo.position.z += (float)chunk->m_z * (float)ChunkManager::CHUNK_SIZE;
-
-                            p_ring->m_seam_nodes.push_back(entry);
-                            p_ring->m_seam_indices.push_back(index_count++);
-                            
-                         }
-                         
-                    }
-                    
+                   std::cout << entry << "_\n";
                 }
-            }
-            p_ring->m_nodeIdxCurr = index_count;
-            p_ring->m_seam_tree_root_index = p_ring->createOctree(p_ring->m_seam_indices, 1.0f, false);
 
-            if(p_ring->m_seam_tree_root_index != -1 && p_ring->m_seam_nodes.size() > 1)
-            {
-                boost::shared_ptr<IndexBuffer> pIndices = boost::make_shared<IndexBuffer>();
-                boost::shared_ptr<VertexBuffer> pVertices = boost::make_shared<VertexBuffer>();
+                std::cout << "====" << '\n';*/
 
-                GenerateMeshFromOctree(p_ring->m_seam_tree_root_index, *pVertices, *pIndices, p_ring->m_seam_nodes);
+            continue;
+         }
 
-                if(pVertices->size() <= 1 || pIndices->size() <= 1)
-                {
-                    p_ring->m_seam_nodes.clear();
-                    p_ring->m_b_work_in_progress.reset();
-                    p_ring->m_seams_generated = boost::make_shared<bool>(true);
-                    continue;
-                }
-                p_ring->m_pVertices = pVertices;
-                p_ring->m_pIndices = pIndices;
-            }
-
-			p_ring->m_seam_nodes.clear();
-			p_ring->m_seam_indices.clear();
-            p_ring->m_b_work_in_progress.reset();
-        }
-
-        if (!did_some_work)
-        {
-            //we can afford to poll 10 X a frame or even more, thread will remain 100% idle, because of sleep.
-            std::this_thread::sleep_for( frametime / 10);
-        }
+         //std::cout << "processing" << '\n';
+         m_nodeChunkContourGeneratorQueue.push( chunk );
 
 
-    }
+
+
+
+         did_some_work = true;
+
+      }
+
+      if( !did_some_work )
+      {
+         //we can afford to poll 10 X a frame or even more, thread will remain 100% idle, because of sleep.
+         std::this_thread::sleep_for( frametime / 10 );
+      }
+
+
+   }
+
+}
+
+void ChunkManager::chunkContourThread()
+{
+   typedef boost::chrono::high_resolution_clock Clock;
+
+   //this has to be in ms or something, not framerate, but time!
+   //int frameRate = 60;
+   typedef boost::chrono::high_resolution_clock Clock;
+   //60 fps is ~15 ms / frame
+   std::chrono::milliseconds frametime( 25 );
+   bool did_some_work = false;
+   while( 1 )
+   {
+
+      did_some_work = false;
+
+      std::size_t max_chunks_per_frame = 25;
+
+      for( std::size_t i = 0; i < max_chunks_per_frame; ++i )
+      {
+
+         auto& chunk = m_nodeChunkContourGeneratorQueue.pop();
+
+         if( !chunk )
+         {
+            continue;
+         }
+
+         assert( chunk->m_zeroCrossCompact != 0 );
+         auto t11 = Clock::now();
+         chunk->buildTree( ChunkManager::CHUNK_SIZE, 1.02f );
+         chunk->createVertices();
+
+         if( chunk->m_pOctreeNodes )
+         {
+            ( *( chunk->m_pOctreeNodes ) ).clear();
+         }
+
+         chunk->m_edgesCompact.reset();
+
+         chunk->m_zeroCrossCompact.reset();
+         chunk->m_workInProgress.reset();
+
+         m_nodeChunkMeshGeneratorQueue.push( chunk );
+
+         did_some_work = true;
+         auto t2 = Clock::now();
+         //std::cout << "contour" << t2 - t11 << "\n";
+
+      }
+
+      if( !did_some_work )
+      {
+         //we can afford to poll 10 X a frame or even more, thread will remain 100% idle, because of sleep.
+         std::this_thread::sleep_for( frametime / 10 );
+      }
+
+
+   }
 
 }
 
 
-ChunkManager::~ChunkManager(void)
+ChunkManager::~ChunkManager( void )
 {
 }
 
 
-void ChunkManager::render(void)
+void ChunkManager::render( void )
 {
 
 }

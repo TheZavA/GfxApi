@@ -1,198 +1,4 @@
-/*
- * Copyright 1993-2010 NVIDIA Corporation.  All rights reserved.
- *
- * Please refer to the NVIDIA end user license agreement (EULA) associated
- * with this source code for terms and conditions that govern your use of
- * this software. Any use, reproduction, disclosure, or distribution of
- * this software and related documentation outside the terms of the EULA
- * is strictly prohibited.
- *
- */
 
-
-//Passed down with -D option on clBuildProgram
-//Must be a power of two
-#define WORKGROUP_SIZE 256
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Scan codelets
-////////////////////////////////////////////////////////////////////////////////
-#if(1)
-    //Naive inclusive scan: O(N * log2(N)) operations
-    //Allocate 2 * 'size' local memory, initialize the first half
-    //with 'size' zeros avoiding if(pos >= offset) condition evaluation
-    //and saving instructions
-    inline uint scan1Inclusive(uint idata, __local uint *l_Data, uint size){
-        uint pos = 2 * get_local_id(0) - (get_local_id(0) & (size - 1));
-        l_Data[pos] = 0;
-        pos += size;
-        l_Data[pos] = idata;
-
-        for(uint offset = 1; offset < size; offset <<= 1){
-            barrier(CLK_LOCAL_MEM_FENCE);
-            uint t = l_Data[pos] + l_Data[pos - offset];
-            barrier(CLK_LOCAL_MEM_FENCE);
-            l_Data[pos] = t;
-        }
-
-        return l_Data[pos];
-    }
-
-    inline uint scan1Exclusive(uint idata, __local uint *l_Data, uint size){
-        return scan1Inclusive(idata, l_Data, size) - idata;
-    }
-
-#else
-    #define LOG2_WARP_SIZE 5U
-    #define      WARP_SIZE (1U << LOG2_WARP_SIZE)
-
-    //Almost the same as naive scan1Inclusive but doesn't need barriers
-    //and works only for size <= WARP_SIZE
-    inline uint warpScanInclusive(uint idata, __local uint *l_Data, uint size){
-        uint pos = 2 * get_local_id(0) - (get_local_id(0) & (size - 1));
-        l_Data[pos] = 0;
-        pos += size;
-        l_Data[pos] = idata;
-
-        if(size >=  2) l_Data[pos] += l_Data[pos -  1];
-        if(size >=  4) l_Data[pos] += l_Data[pos -  2];
-        if(size >=  8) l_Data[pos] += l_Data[pos -  4];
-        if(size >= 16) l_Data[pos] += l_Data[pos -  8];
-        if(size >= 32) l_Data[pos] += l_Data[pos - 16];
-
-        return l_Data[pos];
-    }
-
-    inline uint warpScanExclusive(uint idata, __local uint *l_Data, uint size){
-        return warpScanInclusive(idata, l_Data, size) - idata;
-    }
-
-    inline uint scan1Inclusive(uint idata, __local uint *l_Data, uint size){
-        if(size > WARP_SIZE){
-            //Bottom-level inclusive warp scan
-            uint warpResult = warpScanInclusive(idata, l_Data, WARP_SIZE);
-
-            //Save top elements of each warp for exclusive warp scan
-            //sync to wait for warp scans to complete (because l_Data is being overwritten)
-            barrier(CLK_LOCAL_MEM_FENCE);
-            if( (get_local_id(0) & (WARP_SIZE - 1)) == (WARP_SIZE - 1) )
-                l_Data[get_local_id(0) >> LOG2_WARP_SIZE] = warpResult;
-
-            //wait for warp scans to complete
-            barrier(CLK_LOCAL_MEM_FENCE);
-            if( get_local_id(0) < (WORKGROUP_SIZE / WARP_SIZE) ){
-                //grab top warp elements
-                uint val = l_Data[get_local_id(0)];
-                //calculate exclsive scan and write back to shared memory
-                l_Data[get_local_id(0)] = warpScanExclusive(val, l_Data, size >> LOG2_WARP_SIZE);
-            }
-
-            //return updated warp scans with exclusive scan results
-            barrier(CLK_LOCAL_MEM_FENCE);
-            return warpResult + l_Data[get_local_id(0) >> LOG2_WARP_SIZE];
-        }else{
-            return warpScanInclusive(idata, l_Data, size);
-        }
-    }
-
-    inline uint scan1Exclusive(uint idata, __local uint *l_Data, uint size){
-        return scan1Inclusive(idata, l_Data, size) - idata;
-    }
-#endif
-
-
-//Vector scan: the array to be scanned is stored
-//in work-item private memory as uint4
-inline uint4 scan4Inclusive(uint4 data4, __local uint *l_Data, uint size){
-    //Level-0 inclusive scan
-    data4.y += data4.x;
-    data4.z += data4.y;
-    data4.w += data4.z;
-
-    //Level-1 exclusive scan
-    uint val = scan1Inclusive(data4.w, l_Data, size / 4) - data4.w;
-
-    return (data4 + (uint4)val);
-}
-
-inline uint4 scan4Exclusive(uint4 data4, __local uint *l_Data, uint size){
-    return scan4Inclusive(data4, l_Data, size) - data4;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Scan kernels
-////////////////////////////////////////////////////////////////////////////////
-__kernel __attribute__((reqd_work_group_size(WORKGROUP_SIZE, 1, 1)))
-void scanExclusiveLocal1(
-    __global uint4 *d_Dst,
-    __global uint4 *d_Src,
-    __local uint *l_Data,
-    uint size
-){
-    //Load data
-    uint4 idata4 = d_Src[get_global_id(0)];
-
-    //Calculate exclusive scan
-    uint4 odata4  = scan4Exclusive(idata4, l_Data, size);
-
-    //Write back
-    d_Dst[get_global_id(0)] = odata4;
-}
-
-typedef struct uin32_2
-{
-    uint n;
-    uint size;
-} uint32_2_cl;
-
-//Exclusive scan of top elements of bottom-level scans (4 * THREADBLOCK_SIZE)
-__kernel __attribute__((reqd_work_group_size(WORKGROUP_SIZE, 1, 1)))
-void scanExclusiveLocal2(
-    __global uint *d_Buf,
-    __global uint *d_Dst,
-    __global uint *d_Src,
-    __local uint *l_Data,
-    uint32_2_cl sizen
-
-){
-    uint N = sizen.n;
-    uint arrayLength = sizen.size;
-    //Load top elements
-    //Convert results of bottom-level scan back to inclusive
-    //Skip loads and stores for inactive work-items of the work-group with highest index(pos >= N)
-    uint data = 0;
-    if(get_global_id(0) < N)
-    data =
-        d_Dst[(4 * WORKGROUP_SIZE - 1) + (4 * WORKGROUP_SIZE) * get_global_id(0)] + 
-        d_Src[(4 * WORKGROUP_SIZE - 1) + (4 * WORKGROUP_SIZE) * get_global_id(0)];
-
-    //Compute
-    uint odata = scan1Exclusive(data, l_Data, arrayLength);
-
-    //Avoid out-of-bound access
-    if(get_global_id(0) < N)
-        d_Buf[get_global_id(0)] = odata;
-}
-
-//Final step of large-array scan: combine basic inclusive scan with exclusive scan of top elements of input arrays
-__kernel __attribute__((reqd_work_group_size(WORKGROUP_SIZE, 1, 1)))
-void uniformUpdate(
-    __global uint4 *d_Data,
-    __global uint *d_Buf
-){
-    __local uint buf[1];
-
-    uint4 data4 = d_Data[get_global_id(0)];
-
-    if(get_local_id(0) == 0)
-        buf[0] = d_Buf[get_group_id(0)];
-
-    barrier(CLK_LOCAL_MEM_FENCE);
-    data4 += (uint4)buf[0];
-    d_Data[get_global_id(0)] = data4;
-}
 
 #define ONE_F1                 (1.0f)
 #define ZERO_F1                (0.0f)
@@ -1037,7 +843,7 @@ float ridgedmultifractal2d(
     value = signal;
 
  
-
+	#pragma unroll
     for ( i = 0; i < iterations; i++ )
 
     {
@@ -1475,7 +1281,7 @@ float fBM(float2 position, float frequency, float lacunarity, float octaves)
 
     float amplitude = gain;
 
-
+	#pragma unroll
     for (int i = 0; i < octaves; ++i)
     {
         total += sgnoise2d(position * frequency) * amplitude;         
@@ -1487,61 +1293,90 @@ float fBM(float2 position, float frequency, float lacunarity, float octaves)
 
 }
 
-float density_function(float4 pos)
+float sphereFunction(float4 pos)
 {
-    return multifractal3d(pos, 0.01, 2.19, 0, 10);
+	return (pos.x*pos.x + pos.y*pos.y + pos.z*pos.z);
 }
 
-float density_function2d(float2 pos, int octaves)
-{
-    //return 0.3f;
-    //return ridgedmultifractal2d(pos, 0.0004, 2.2, 0, (int)(octaves));
-    return fBM(pos, 0.0004f, 2.15f, octaves);
-    //return multifractal2d(pos, 0.00001, 2.2, 0, 13);
-}
-
-float density_function12d(float2 pos, int octaves)
+/*float densities3d(float3 pos, uchar level)
 {
     
-    //return ridgedmultifractal2d(pos, 0.0005, 2.2, 0, (int)(octaves));
-    return ridgedmultifractal2d(pos, 0.00006, 2.2, 0, (int)(octaves));
-}
+	
+	level = 14;
 
-float density_function2d1(float2 pos, int octaves)
+    float3 mod_pos = pos / 12800;
+    
+    float mask = clamp(0.5f - 0.5f * fBM((float2)(mod_pos.x, mod_pos.z), 0.1f, 2.12f, 15), 0.0f, 1.0f);
+
+    float baseMountain =  fBM((float2)(mod_pos.x, mod_pos.z), 0.31f, 2.19f, 5);
+
+
+    //return pos.y < 1000 ? -1 : 0;
+    float billow = fBM((float2)(mod_pos.x-4000, mod_pos.z), 0.1f, 2.19f, 2);
+
+    float detail =  clamp(1.0f-abs(ridgedmultifractal2d((float2)(mod_pos.x - 4000, mod_pos.z), 0.2, 2.183, 0, 10)), 0.0f, 1.0f);
+
+	
+
+    //return detail - pos.y / 6000;
+	
+	//return sphereFunction((float4)(pos.x, pos.y, pos.z, 0.0f)) - 819200335.f ;
+
+    return mix(billow - pos.y / 2000, baseMountain - pos.y / 26000, mask);
+
+
+}*/
+
+float densities3d(float3 pos, uchar level)
 {
     
-    //return ridgedmultifractal2d(pos, 0.005001, 2.2, 0, (int)(octaves));
-    return ridgedmultifractal2d(pos, 0.003, 2.193, 0, (int)(octaves));
+	//return pos.y < 1000 ? -1 : 0;
+	//return sphereFunction((float4)(pos.x, pos.y, pos.z, 0.0f)) - 20000000335.f ;
+	float3 mod_pos = pos * 0.001f;
+	//level = 14;
+	     
+    float mask = clamp(fBM((float2)(pos.x, pos.z), 0.00001f, 2.12f, 9), 0.0f, 1.0f);
+	float mask2 = clamp(fBM((float2)(pos.x + 80000, pos.z), 0.00004f, 2.12f, 12), 0.0f, 1.0f);
+
+	float baseMountain = fBM((float2)(mod_pos.x - 2000, mod_pos.z), 0.016f, 2.19f, min((int)(level), 3));
+    float billow = fBM((float2)(mod_pos.x - 4000, mod_pos.z), 0.009f, 2.19f,  min((int)(level), 5));
+    float detail = fabs(ridgedmultifractal2d((float2)(mod_pos.x - 14000, mod_pos.z - 8000), 0.015, 2.233, 0, min((int)(level), 2)));
+
+
+	return mix(mix(billow * 2, detail * 10, mask) , baseMountain * 5 , mask2) - pos.y / 2600;
+
+
 }
 
-float densities3d(float3 pos)
+uchar material3d(float density, float3 pos, uchar level)
 {
-    float density = density_function2d((float2)(pos.x*0.01, pos.z*0.01), 14);
-    float density1 = density_function12d((float2)(pos.x*0.6, pos.z*0.6), 9);
-    float density2 = density_function2d1((float2)(pos.x*0.1, pos.z*0.1), 8);
-  //  float density3 = density_function((float4)(pos.x*0.1, pos.y*0.1, pos.z*0.1, 0));
+    
+	uchar material = 1;
 
-    float worldYCurr = pos.y *0.2;
+	level = 14;
 
-    float noise = 0.5f + density * 0.5f;
-    //float height = noise * 500;
-    float height = noise * 400;
-    float h0 = height - worldYCurr;
+    float3 mod_pos = pos / 1280;
+    
+    float mask = clamp(fBM((float2)(pos.x, pos.z), 0.00001f, 2.12f, 6), 0.0f, 1.0f);
+	float mask2 = clamp(fBM((float2)(pos.x+80000, pos.z), 0.00004f, 2.12f, 6), 0.0f, 1.0f);
 
-   // h0 = density_function((float4)(pos.x*16,pos.y*16,pos.z*16,0));
+	if( mask2 != 0.0f)
+	{
+		material = 3;
+	}
 
-    float noise1 = 0.5f + density1 * 0.5f;
-    float height1 = noise1 * 260;
-    float h01 = height1 - worldYCurr;
-  /*  if(worldYCurr > 1250 + min(h0/2800, h01/1360))
-    {
-        density3 = min(h0/2800, h01/1360 );
-    }*/
-   //return density3;
-   // return max(  density3, min(h0/2800, h01/1360 ) );
-    return min(h0/100, h01/120 ) + density2 * 0.28f  /*- density3 * 1.0f*/;
-    //return (h0 ) /*+ (h01 * 1.1)*/;
+	if( mask != 0.0f)
+	{
+		material = 2;
+	}
+
+
+ 
+	return material;
+
 }
+
+
 
 typedef struct cl_float3
 {
@@ -1550,24 +1385,6 @@ typedef struct cl_float3
     float z;
 } cl_float3_t;
 
-
-
-typedef struct zeroCrossings
-{
-   	float positions[6][3];
-    float normals[6][3];
-    ushort xPos;
-    ushort yPos;
-    ushort zPos;
-	uchar edgeCount;
-    int corner;
-} zeroCrossings_t;
-
-
-
-
-
-
 typedef struct int2
 {
     int values[2];
@@ -1575,10 +1392,11 @@ typedef struct int2
 
 typedef struct cl_edge
 {
-    int grid_pos[4];
-    int edge;
+    uchar grid_pos[3];
+    uchar edge;
     cl_float3_t normal;
     cl_float3_t zero_crossing;
+	uchar material;
 } cl_edge_t;
 
 typedef struct cl_int4
@@ -1590,41 +1408,96 @@ typedef struct cl_int4
 } cl_int4_t;
 
 
-float3 calculateSurfaceNormal(float3 pos, float res)
+float3 calculateSurfaceNormal(float3 pos, float res, uchar level)
 {
-    const float H = 1.f * res;
-    const float dx = densities3d(pos + (float3)(H, 0.f, 0.f)) - densities3d(pos - (float3)(H, 0.f, 0.f));
-    const float dy = densities3d(pos + (float3)(0.f, H, 0.f)) - densities3d(pos - (float3)(0.f, H, 0.f));
-    const float dz = densities3d(pos + (float3)(0.f, 0.f, H)) - densities3d(pos - (float3)(0.f, 0.f, H));
+    const float H = 1.f * res * 2.0f;
+    const float dx = densities3d(pos + (float3)(H, 0.f, 0.f), level) - densities3d(pos - (float3)(H, 0.f, 0.f), level);
+    const float dy = densities3d(pos + (float3)(0.f, H, 0.f), level) - densities3d(pos - (float3)(0.f, H, 0.f), level);
+    const float dz = densities3d(pos + (float3)(0.f, 0.f, H), level) - densities3d(pos - (float3)(0.f, 0.f, H), level);
 
-    return normalize((float3)(dx, dy, dz));
+    return (float3)(dx, dy, dz);
 } 
 
-__constant float ZERO_INCREMENT = 1.f / 8.0f;
-__constant int ZERO_STEPS = 8;
 
-float3 approximateZeroCrossingPosition(float3 p0, float3 p1, float res)
+// @TODO changing this affects how well different lods match up 
+// Potentially use a totally different approach ( going on until a certain threshold is reached)
+
+__constant int ZERO_STEPS = 6;
+__constant float ZERO_INCREMENT = 1.f / 6.0f;
+
+
+float3 approximateZeroCrossingPosition(float3 p0, float3 p1, float res, uchar level)
 {
 
     float minValue = FLT_MAX;
     float currentT = 0.f;
     float t = 0.f;
-    for (int i = 0; i <= ZERO_STEPS; i++)
-    {
-        const float3 p = mix(p0, p1, currentT);
-        const float d = fabs(densities3d(p));
-        if (d < minValue)
-        {
-            t = currentT;
-            minValue = d;
-        }
 
-        currentT += ZERO_INCREMENT;
-   }
+	#pragma unroll
+	for (int i = 0; i <= ZERO_STEPS; i++)
+	{
+		const float3 p = mix(p0, p1, currentT);
+		const float d = fabs(densities3d(p, level));
+		if (d < minValue)
+		{
+			t = currentT;
+			minValue = d;
+		}
+
+		currentT += ZERO_INCREMENT;
+	}
 
    return mix(p0, p1, t);
 }
 
+
+float3 findCrossingPoint(int quality, float3 pt0, float3 pt1, uchar level)
+{
+
+  float isoValue = 0.0f;
+
+  float3 p0 = pt0;
+  float v0 = densities3d(p0, level);
+  float3 p1 = pt1;
+  float v1 = densities3d(p1, level);
+
+  float alpha = (0 - v0) / (v1 - v0);
+
+  // Interpolate
+  float3 pos;
+  pos.x = p0.x + alpha * (p1.x - p0.x);
+  pos.y = p0.y + alpha * (p1.y - p0.y);
+  pos.z = p0.z + alpha * (p1.z - p0.z);
+
+
+  // Re-Sample
+  float val = densities3d(pos, level);
+
+  // Return if good enough
+  if((fabs(isoValue-val)<0.000001f)||(quality==0))
+  {
+    return pos;
+  }
+  else
+  {
+    if(val<0.f)
+    {
+      if(v0>0.f)
+        pos = findCrossingPoint(quality-1, pos, pt0, level);
+      else if(v1>0.f)
+        pos = findCrossingPoint(quality-1, pos, pt1, level);
+    }
+    else if(val>0.f)
+    {
+      if(v0<0.f)
+        pos = findCrossingPoint(quality-1, pt0, pos, level);
+      else if(v1<0.f)
+        pos = findCrossingPoint(quality-1, pt1, pos, level);
+    }
+  }
+
+  return pos;
+}
 
 
 float3 LinearInterp(float3 p1, float p1Val, float3 p2, float p2Val, float value)

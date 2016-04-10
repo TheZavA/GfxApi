@@ -1,416 +1,921 @@
 #ifndef _GFXAPI_H
 #define _GFXAPI_H
 
-#include <GL/glew.h>
 #include <stdint.h>
 
-#include <boost/format.hpp>
+//#include <boost/format.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/make_shared.hpp>
+#include <boost/weak_ptr.hpp>
 
-#include <mgl/MathGeoLib.h>
+//must incldue assert first, else mathgeolib defines it
+#include <cassert>
+#include <mgl\MathGeoLib.h>
 
-struct GLFWwindow;
+#include "glcommon.h"
 
 namespace GfxApi {
 
-
-#define checkOpenGLError() checkOglError(__FILE__, __LINE__)
-int checkOglError(const char *file, int line);
-
-
-enum class VertexDataSemantic 
-{
-    COLOR, 
-    COLOR2, 
-    NORMAL, 
-    TCOORD, 
-    VCOORD
-};
-
-
-enum class VertexDataType
-{
-    BYTE, 
-    UNSIGNED_BYTE, 
-    UNSIGNED_SHORT,   
-    SHORT, 
-    INT, 
-    FLOAT, 
-    DOUBLE
-};
-
-
-enum class ShaderType 
-{
-    NullShader, 
-    VertexShader, 
-    PixelShader
-};
-
-
-enum class PrimitiveType 
-{
-    Point, 
-    LineList, 
-    LineStrip, 
-    TriangleList, 
-    TriangleStrip
-};
-
-
-enum class PrimitiveIndexType 
-{
-    IndicesNone,
-    Indices8Bit, 
-    Indices16Bit, 
-    Indices32Bit
-};
-
-
-GLenum toGL(VertexDataType type);
-
-
-class Graphics
-{
-public:
-    Graphics();
-    ~Graphics(void);
-
-    void clear(bool clearDepth = true, bool clearStencil = true, bool clearColor = true,
-               float red = 0.f, float green = 0.f, float blue = 0.f, float alpha = 0.f,
-               float depthValue = 1.f, int stencilValue = 0);
-};
-
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-class VertexElement
-{
-public:
-    VertexElement(VertexDataSemantic semantic, VertexDataType type, int count, const std::string& name);
-    ~VertexElement(void);
-
-    int getSize() const;
-    int getCount() const;
-    VertexDataType getType() const;
-        
-    //void save_to_file(std::ostream& out);
-    //void load_from_file(std::istream& in);
-
-    //void dump_to_console();
-        
-    /**
-    * Returns a string of format "(semantic): : (name) semantic: (type), count: (num)".
-    */
-    std::string toString() const;
-        
-    int m_count;
-    VertexDataSemantic m_semantic;
-    VertexDataType m_type;
-    std::string m_name;
-        
-};
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-class VertexDeclaration
-{
-public:
-    VertexDeclaration();
-    ~VertexDeclaration(void);
- 
-    /**
-    * Adds a new data element to the end of the element list.
-    */
-    void add(VertexElement elem);
-        
-    /**
-    * The size of a single vertex in the stream in bytes, including any padding.
-    */
-    int getSize() const;
-        
-        
-    const std::vector<VertexElement>& elements() const;
-        
-    //void save_to_file(std::ostream& out);
-    //void load_from_file(std::istream& in);
-    //void dump_to_console();
-private:
-
-        
-    std::vector<VertexElement> m_elements;
-};
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-class VertexBuffer : boost::noncopyable
-{
-public:
-    explicit VertexBuffer(int numVertices, const VertexDeclaration& dec);
-    ~VertexBuffer();
-
-    typedef std::vector<unsigned char> cpu_data_t;
-        
-    std::string name;
-        
-    int getNumVertices() const;
-   
-    int getSizeInBytes() const;
-
-    void setNumVertices(int size, bool perseve_old_cpu_data = true);
-        
-    void updateToGpu();
-    void updateToCpu();
-    void allocateCpu();
-    void allocateGpu();
-        
-    const VertexDeclaration& getDeclaration() const;
-    VertexDeclaration& getDeclaration();
-        
-        
-    const unsigned char* getCpuPtr() const;
-    unsigned char* getCpuPtr();
-        
-    bool hasGpuMemory() const;
-    int getGpuSizeInBytes() const;
-    int getCpuSizeInBytes() const;
-        
-private:
-        
-    GLuint m_vbo;
-        
-    int m_numVertices;
-    boost::shared_ptr< cpu_data_t > m_cpuData;
-    int m_gpuSize;
-        
-    VertexDeclaration m_declaration;
-    friend class Graphics;
-    friend class Mesh;
-};
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-class IndexBuffer : boost::noncopyable
-{
-public:
-    typedef std::vector<unsigned char> cpu_data_t;
-
-    explicit IndexBuffer(int numIndices, const VertexDeclaration& dec, PrimitiveIndexType type);
-    ~IndexBuffer();
-        
-    std::string name;
-        
-    void updateToGpu();
-    void updateToCpu();
-    void allocateCpu();
-    void allocateGpu();
-        
-    int getNumIndices() const;
-    ///The size of the IndexBuffer, calculated according to the number of indices, and the index-type.
-    int getIndexSizeInBytes() const;
-    int getSingleIndexSizeInBytes() const;
-
-    void setNumIndices(int size, bool perseve_old_cpu_data);
-        
-    const std::string& getName() const;
-
-    unsigned char * getCpuPtr();
-    const unsigned char * getCpuPtr() const;
-        
-
-    PrimitiveIndexType getIndexType() const;
-
-    GLuint m_indexBuffer;
-
-private:
-    PrimitiveIndexType m_indexType;
-        
-    int m_numIndices;
-
-    boost::shared_ptr< cpu_data_t > m_indexData;
-    int m_gpuSize;
-        
-    friend class Graphics;
-    friend class Mesh;
-};
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-class Texture
-{
-public:
-    Texture(void);
-    ~Texture(void);
-
-    void loadDDS(const char * imagepath);
-    void loadBMP(const char * imagepath, int index);
-
-    GLuint getHandle() const;
-
-private:
-    GLuint m_textureHandle;
-
-    unsigned int m_height;
-    unsigned int m_width;
-};
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-class Shader : boost::noncopyable
-{
-public:
-    explicit Shader(ShaderType type);
-    ~Shader();
-        
-    void LoadFromString(ShaderType type,
-                        const char* shaderData,
-                        const char* entryPoint=0,
-                        const char* profile=0);
-
-    void LoadFromFile(ShaderType type,
-                        const char* fileName,
-                        const char* entryPoint=0,
-                        const char* profile=0);
-
-    GLuint m_shaderHandle;
-        
-private:
-    ShaderType m_type;
-    
-};
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-class ShaderProgram : boost::noncopyable
-{
-public:
-    explicit ShaderProgram();
-    ~ShaderProgram();
-        
-    void attach(Shader& shader);
-        
-    int getUniformLocation(const char* name);
-        
-    void use();
-    void bindTexture(int index, int textureHandle, const std::string& samplerName);
-
-    void setUniform(const float4x4& matrix, const std::string& name);
-    void setUniform(const float value, const std::string& name);
-    void setUniform(const int value, const std::string& name);
-    void setUniform(const float v1, const float v2, const float v3, const std::string& name);
-
-    static void setFloat4x4(int parameterIndex, const float4x4& matrix);
-    static void setFloat(int parameterIndex, const float value);
-    static void setInt(int parameterIndex, const int value);
-    static void setFloat3(int parameterIndex, const float v1, const float v2, const float v3);
-
-
-    GLuint m_programHandle;
-};
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-class Mesh : boost::noncopyable
-{
-public:
-    explicit Mesh(PrimitiveType primType);
-    ~Mesh();
-        
-    std::vector<boost::shared_ptr<VertexBuffer> > m_vbs;
-    boost::shared_ptr<IndexBuffer> m_ib;
-    boost::shared_ptr<ShaderProgram> m_sp;
-        
-    void generateVAO(int startVertexOffset=0, bool check_index_bounds=false);
-    void linkShaders();
-    void applyVAO();
-
-    static void unbindVAO();
-        
-    void draw(int numIndices=-1, int startIndexOffset=0);
-
-    void checkValid(int startVertexOffset=0, bool check_index_bounds=false) const;
-
-    const VertexDeclaration& Declaration() const;
-
-    /**
-    * Returns the type of primitives used by this mesh (PrimPoint, PrimLineList, PrimLineStrip, PrimTriangleList or PrimTriangleStrip).
-    */
-    PrimitiveType getPrimType() const;
-
-private:
-        
-    GLuint m_vao;
-    int m_numVertices;
-    VertexDeclaration m_declaration;
-
-    /**
-    * The primitive type that is used for rendering.
-    */
-    PrimitiveType m_primType;
-        
-        
-    friend class Graphics;
-        
-};
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-class Input
-{
-public:
-    Input(GLFWwindow* window);
-    ~Input(void);
-
-    int keyPressed(int key);
-
-    void poll();
-
-private: 
-    GLFWwindow* m_pWindow;
-};
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-class RenderNode
-{
-public:
-    RenderNode(boost::shared_ptr<Mesh> mesh, float3 pos, float3 scale = float3(1,1,1), float3 rotation = float3(0,0,0));
-    ~RenderNode(void);
-
-    float4x4 getXForm() const;
-
-    boost::shared_ptr<Mesh> m_pMesh;
-    float3 m_pos;
-    float3 m_scale;
-    float3 m_rotation;
-    float4x4 m_xForm;
-
-};
+	struct VertexBuffer;
+	struct IndexBuffer;
+	struct ShaderProgram;
+	struct Mesh;
+	struct Texture;
+	struct TextureUnit;
+	struct TextureSampler;
+
+	void initializeGlew();
+
+	int checkOglError(const char *file, int line);
+
+
+	enum class Access {
+		READ_ONLY,
+		WRITE_ONLY,
+		READ_WRITE
+	};
+
+
+	enum class Usage {
+		STREAM_DRAW,
+		STREAM_READ,
+		STREAM_COPY,
+		STATIC_DRAW,
+		STATIC_READ,
+		STATIC_COPY,
+		DYNAMIC_DRAW,
+		DYNAMIC_READ,
+		DYNAMIC_COPY
+	};
+
+	enum class VertexDataSemantic
+	{
+		COLOR,
+		COLOR2,
+		NORMAL,
+		TCOORD,
+		VCOORD
+	};
+
+
+	enum class VertexDataType
+	{
+		BYTE,
+		UNSIGNED_BYTE,
+		UNSIGNED_SHORT,
+		SHORT,
+		INT,
+		FLOAT,
+		DOUBLE
+	};
+
+
+	enum class ShaderType
+	{
+		NullShader,
+		VertexShader,
+		PixelShader
+	};
+
+
+	enum class PrimitiveType
+	{
+		Point,
+		LineList,
+		LineStrip,
+		TriangleList,
+		TriangleStrip
+	};
+
+
+	enum class PrimitiveIndexType
+	{
+		IndicesNone,
+		Indices8Bit,
+		Indices16Bit,
+		Indices32Bit
+	};
+
+	enum class ResourceUsage
+	{
+		UsageImmutable,
+		UsageMutable
+	};
+
+	enum class TextureType
+	{
+		Texture1D,
+		Texture1DArray,
+		Texture2D,
+		Texture2DArray,
+		TextureRectangle,
+		Texture3D,
+
+		TextureCubeMap,
+		TextureCubeMapArray
+	};
+
+	enum class TextureAddressMode {
+		TextureAddressWrap,
+		TextureAddressMirrorWrap,
+		TextureAddressEdgeClamp,
+		TextureAddressMirrorEdgeClamp,
+		TextureAddressBorderClamp
+	};
+
+	enum class TextureFilterMode {
+		Nearest,
+		Linear,
+		NearestMipmapNearest,
+		LinearMipmapNearest,
+		NearestMipmapLinear,
+		LinearMipmapLinear
+	};
+
+	/**
+	* See https://www.opengl.org/sdk/docs/man/html/glTexImage2D.xhtml
+	*
+	* Section describing the @c type parameter.
+	*/
+	enum class TextureElementType {
+		UNSIGNED_BYTE,
+		BYTE,
+		UNSIGNED_SHORT,
+		SHORT,
+		UNSIGNED_INT,
+		INT,
+		FLOAT,
+		UNSIGNED_BYTE_3_3_2,
+		UNSIGNED_BYTE_2_3_3_REV,
+		UNSIGNED_SHORT_5_6_5,
+		UNSIGNED_SHORT_5_6_5_REV,
+		UNSIGNED_SHORT_4_4_4_4,
+		UNSIGNED_SHORT_4_4_4_4_REV,
+		UNSIGNED_SHORT_5_5_5_1,
+		UNSIGNED_SHORT_1_5_5_5_REV,
+		UNSIGNED_INT_8_8_8_8,
+		UNSIGNED_INT_8_8_8_8_REV,
+		UNSIGNED_INT_10_10_10_2,
+		UNSIGNED_INT_2_10_10_10_REV
+	};
+
+	///https://www.opengl.org/sdk/docs/man/html/glTexImage2D.xhtml see the section on the @c format parameter
+	enum class TexturePixelFormat {
+		RED,
+		RG,
+		RGB,
+		BGR,
+		RGBA,
+		BGRA,
+		RED_INTEGER,
+		RG_INTEGER,
+		RGB_INTEGER,
+		BGR_INTEGER,
+		RGBA_INTEGER,
+		BGRA_INTEGER,
+		STENCIL_INDEX,
+		DEPTH_COMPONENT,
+		DEPTH_STENCIL
+	};
+
+	///https://www.opengl.org/sdk/docs/man/html/glTexImage2D.xhtml see the section on the @c internalFormat parameter
+	enum class TextureInternalFormat {
+		DEPTH_COMPONENT,
+		DEPTH_STENCIL,
+		RED,
+		RG,
+		RGB,
+		RGBA,
+
+
+		R8,
+		R8_SNORM,
+		R16,
+		R16_SNORM,
+		RG8,
+		RG8_SNORM,
+		RG16,
+		RG16_SNORM,
+		R3_G3_B2,
+		RGB4,
+		RGB5,
+		RGB8,
+		RGB8_SNORM,
+		RGB10,
+		RGB12,
+		RGB16_SNORM,
+		RGBA2,
+		RGBA4,
+		RGB5_A1,
+		RGBA8,
+		RGBA8_SNORM,
+		RGB10_A2,
+		RGB10_A2UI,
+		RGBA12,
+		RGBA16,
+		SRGB8,
+		SRGB8_ALPHA8,
+		R16F,
+		RG16F,
+		RGB16F,
+		RGBA16F,
+		R32F,
+		RG32F,
+		RGB32F,
+		RGBA32F,
+		R11F_G11F_B10F,
+		RGB9_E5,
+		R8I,
+		R8UI,
+		R16I,
+		R16UI,
+		R32I,
+		R32UI,
+		RG8I,
+		RG8UI,
+		RG16I,
+		RG16UI,
+		RG32I,
+		RG32UI,
+		RGB8I,
+		RGB8UI,
+		RGB16I,
+		RGB16UI,
+		RGB32I,
+		RGB32UI,
+		RGBA8I,
+		RGBA8UI,
+		RGBA16I,
+		RGBA16UI,
+		RGBA32I,
+		RGBA32UI,
+
+		COMPRESSED_RED,
+		COMPRESSED_RG,
+		COMPRESSED_RGB,
+		COMPRESSED_RGBA,
+		COMPRESSED_SRGB,
+		COMPRESSED_SRGB_ALPHA,
+		COMPRESSED_RED_RGTC1,
+		COMPRESSED_SIGNED_RED_RGTC1,
+		COMPRESSED_RG_RGTC2,
+		COMPRESSED_SIGNED_RG_RGTC2,
+		COMPRESSED_RGBA_BPTC_UNORM,
+		COMPRESSED_SRGB_ALPHA_BPTC_UNORM,
+		COMPRESSED_RGB_BPTC_SIGNED_FLOAT,
+		COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT
+	};
+
+	GLenum toGL(VertexDataType type);
+	GLenum toGL(Access access);
+	GLenum toGL(Usage usage);
+	GLenum toGL(TextureInternalFormat internalformat);
+	GLenum toGL(TexturePixelFormat pixelformat);
+	GLenum toGL(TextureElementType elementtype);
+	GLenum toGL(TextureType texturetype);
+	GLenum toGL(PrimitiveIndexType indextype);
+	GLenum toGL(TextureFilterMode filtermode);
+	GLenum toGL(TextureAddressMode addressmode);
+
+	GLenum toGLBinding(TextureType texturetype);
+
+	const char* toGLSTR(PrimitiveIndexType indextype);
+
+	struct Graphics
+	{
+	public:
+		Graphics();
+		~Graphics(void);
+
+		void Clear(bool clearDepth = true, bool clearStencil = true, bool clearColor = true,
+			float red = 0.f, float green = 0.f, float blue = 0.f, float alpha = 0.f,
+			float depthValue = 1.f, int stencilValue = 0);
+	};
+
+
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+	class VertexElement
+	{
+	public:
+		VertexElement(VertexDataSemantic semantic, VertexDataType type, int count, const std::string& name);
+		~VertexElement(void);
+
+		int SizeBytes() const;
+		int SizeElems() const;
+		VertexDataSemantic Semantic() const;
+		VertexDataType Type() const;
+
+		const std::string& Name() const;
+
+		//void save_to_file(std::ostream& out);
+		//void load_from_file(std::istream& in);
+
+		//void dump_to_console();
+
+		/**
+		* Returns a string of format "(semantic): : (name) semantic: (type), count: (num)".
+		*/
+		std::string ToString() const;
+
+	private:
+		VertexDataSemantic m_semantic;
+		VertexDataType m_type;
+		int m_count;
+		std::string m_name;
+
+	};
+
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+	class VertexDeclaration
+	{
+	public:
+		VertexDeclaration();
+		~VertexDeclaration();
+
+		/**
+		* Adds a new data element to the end of the element list.
+		*/
+		void Add(VertexElement elem);
+
+		/**
+		* The size of a single vertex in the stream in bytes, including any padding.
+		*/
+		int Stride() const;
+
+		///Alias for Stride()
+		//int SizeBytes() const;
+
+
+		const std::vector<VertexElement>& Elements() const;
+
+		//void save_to_file(std::ostream& out);
+		//void load_from_file(std::istream& in);
+		//void dump_to_console();
+	private:
+
+
+		std::vector<VertexElement> m_elements;
+	};
+
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+	struct VertexBuffer : boost::noncopyable
+	{
+	public:
+		explicit VertexBuffer(int numVertices, const VertexDeclaration& dec, Usage usage, bool allocateCpu = true);
+		~VertexBuffer();
+
+		typedef std::vector<unsigned char> cpu_data_t;
+
+		std::string name;
+
+		int NumVertices() const;
+
+		//int getSizeInBytes() const;
+
+		int VertexSizeBytes() const;
+
+		void SetNumVertices(std::size_t size, bool perseve_old_cpu_data = true);
+
+		void UpdateToGpu(const uint8_t* data = 0, int bytes = 0);
+		void UpdateToCpu(uint8_t* data = 0, int bytes = 0);
+		void AllocateCpuMemory();
+		void AllocateGpuMemory();
+
+		bool HasCpuMemory() const;
+		bool HasGpuMemory() const;
+
+		const VertexDeclaration& Declaration() const;
+		VertexDeclaration& Declaration();
+
+
+		const unsigned char* CpuPtr() const;
+		unsigned char* CpuPtr();
+
+		int LogicalBufferSizeBytes() const;
+		int GpuSizeInBytes() const;
+		int CpuSizeInBytes() const;
+
+		void Bind();
+		void UnBind();
+		bool IsBound() const;
+		static void UnBindAll();
+
+	private:
+
+
+		int m_numVertices;
+		VertexDeclaration m_declaration;
+		Usage m_usage;
+		GLuint m_vbo;
+		int m_gpuSize;
+		boost::shared_ptr< cpu_data_t > m_cpuData;
+
+		friend struct Graphics;
+		friend struct Mesh;
+	};
+
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+	struct IndexBuffer : boost::noncopyable
+	{
+	public:
+		typedef std::vector<unsigned char> cpu_data_t;
+
+		explicit IndexBuffer(boost::weak_ptr<Mesh> mesh, int numIndices
+			, PrimitiveIndexType type
+			, Usage usage
+			, bool allocateCpu = true);
+		~IndexBuffer();
+
+		std::string name;
+
+		void UpdateToGpu(const uint8_t* data = 0, int bytes = 0);
+		void UpdateToCpu(uint8_t* data = 0, int bytes = 0);
+		void AllocateCpuMemory();
+		void AllocateGpuMemory();
+
+		int NumIndices() const;
+
+		///Returns the size of a single index in bytes (1,2 or 4, depending on indexType).
+		int IndexSizeBytes() const;
+		int LogicalBufferSizeBytes() const;
+
+		bool HasCpuMemory() const;
+		bool HasGpuMemory() const;
+
+		void SetNumIndices(std::size_t size, bool perseve_old_cpu_data);
+
+		const std::string& Name() const;
+
+		unsigned char * CpuPtr();
+		const unsigned char * CpuPtr() const;
+
+		PrimitiveIndexType IndexType() const;
+
+		void Bind();
+		void UnBind();
+		bool IsBound() const;
+		bool VAOIsBound() const;
+		static void UnBindAll();
+	private:
+		boost::weak_ptr<Mesh> m_mesh;
+		int m_numIndices;
+		PrimitiveIndexType m_indexType;
+		Usage m_usage;
+
+		boost::shared_ptr< cpu_data_t > m_indexData;
+	public:
+		GLuint m_indexBuffer;
+	private:
+		int m_gpuSize;
+
+		friend struct Graphics;
+		friend struct Mesh;
+	};
+
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	template<typename T>
+	struct bind_guard_t : boost::noncopyable {
+		T* b;
+
+		bind_guard_t(bind_guard_t&& o) : b(std::move(o.b)) {}
+		bind_guard_t(T& b)
+			: b(&b)
+		{
+			this->b->Bind();
+		}
+
+
+		~bind_guard_t()
+		{
+			b->UnBind();
+		}
+	};
+
+	template<typename T>
+	bind_guard_t<T> make_bind_guard(T& b)
+	{
+		return bind_guard_t<T>(b);
+	}
+
+	/*
+	template<typename T>
+	struct map_guard_t : boost::noncopyable {
+	void* mptr;
+
+	bind_guard_t(T& b, Access access)
+	{
+	mptr = b.Map(access);
+	}
+
+
+	~bind_guard_t(T& b)
+	{
+	b.UnBind();
+	}
+
+	void* ptr(){
+	return mptr;
+	}
+	};
+
+
+	template<typename T>
+	map_guard_t<T> make_map_guard(T& b, Access access)
+	{
+	return map_guard_t<T>(b);
+	}
+	*/
+
+	class PixelBuffer : boost::noncopyable
+	{
+	public:
+		PixelBuffer(Usage usage, std::size_t bytes, bool allocateCpu = true);
+		~PixelBuffer();
+
+		//void loadDDS(const char * imagepath);
+		//void loadBMP(const char * imagepath, int index);
+
+		int LogicalBufferSizeBytes() const;
+
+
+		void Bind();
+		void UnBind();
+		static void UnBindAll();
+		bool IsBound() const;
+
+
+		unsigned char* CpuPtr();
+		const unsigned char* CpuPtr() const;
+		void AllocateCpuMemory();
+		void AllocateGpuMemory();
+		bool HasCpuMemory() const;
+		bool HasGpuMemory() const;
+
+		void UpdateToGpu(const uint8_t* data = 0, int bytes = 0);
+		void UpdateToCpu(uint8_t* data = 0, int bytes = 0);
+
+		/**
+		* Locks the GPU buffer, and returns a pointer to the memory on the CPU.
+		*
+		* Must call UnMap() when reading/writing is complete.
+		*
+		* Allows calls to glReadPixels(), while bound, and it will not block until the
+		* PBO is mapped.
+		*/
+		//void* Map(Access access);
+		//void UnMap();
+
+	private:
+		GLuint m_pbo;
+		Usage m_usage;
+		std::size_t m_logicalBytes;
+		int m_gpuSize;
+
+		typedef std::vector<unsigned char> cpu_data_t;
+
+		boost::shared_ptr< cpu_data_t > m_cpuData;
+	};
+
+
+	struct TextureUnit : boost::noncopyable
+	{
+		TextureUnit(int index);
+		~TextureUnit();
+
+		void Activate();
+		//void Deactivate();
+
+		bool IsActive() const;
+
+		int Index() const;
+
+		void BindSampler(const TextureSampler& sampler);
+		void UnBindSampler();
+
+		static int MaxTextureUnits();
+	private:
+		int m_index;
+	};
+
+	struct TextureSampler : boost::noncopyable
+	{
+		TextureSampler();
+		~TextureSampler();
+
+
+		//void Bind();
+		//void UnBind();
+		//bool IsBound() const;
+		//static void UnBindAll();
+
+		TextureAddressMode addressU;
+		TextureAddressMode addressV;
+		TextureAddressMode addressW;
+		TextureFilterMode minFilter;
+		TextureFilterMode mipFilter;
+		TextureFilterMode magFilter;
+
+
+		void GenerateParams();
+
+		GLuint Handle() const;
+
+	private:
+		GLuint m_smplr;
+	};
+
+
+	struct TextureFormat
+	{
+		TextureFormat(TextureElementType elementtype, TexturePixelFormat pixelformat)
+			: elementtype(elementtype), pixelformat(pixelformat)
+		{}
+
+		TextureElementType elementtype;
+		TexturePixelFormat pixelformat;
+	};
+
+	struct Texture : boost::noncopyable
+	{
+	public:
+		/**
+		* @param texture_type
+		*      The type of texture, 1D,2D,3D/arrays etc.
+		* @param internal_format
+		*      A suggestion to the GPU of the type of format to store the image in, internally, on the GPU.
+		* @param usage
+		*      If this texture parameters will change (they won't, because the parameters are set in the ctor).
+		* @param width
+		*      The width of the image; for 1D, the length of the image.
+		* @param height
+		*      The height of the image, for 1D, this will be 1.
+		* @param depth
+		*      The depth of the image, for 1D,2D, this will be 1.
+		* @param mipmaps
+		*      The number of mipmaps this texture will have.
+		* @param rowalignment
+		*      The uploaded data will have this rowalignment. See @c UpdateToGpu(). Defaults to 4.
+		*/
+		Texture(TextureType texture_type, TextureInternalFormat internal_format, ResourceUsage usage
+			, int width, int height, int depth, int mipmaps = 1000, int rowalignment = 4);
+		~Texture();
+
+
+		/**
+		* Set a mipmap level of the texture.
+		*
+		* @param textureFormat
+		*      The format of the data being uploaded. The data will be stored according to the @c internal_format
+		*      parameter in the ctor.
+		* @param data pointer to a buffer with the data for the texture.
+		*        If data is 0, then will upload from a bound pixel buffer object instead.
+		* @param dataBytesSize the size of the entire buffer. This is basically rowsize*width*height,
+		*        where rowsize is (sizeperpixel*width) adjusted for @c rowalignment, specified in the ctor.
+		* @param level this specifies the mipmap level to upload the data for. Level 0 *must* be uploaded.
+		*        Other levels are optional, depending on the @c mipmaps parameter specified in the ctor.
+		*        Call @c GenMipmaps() to automatically generate the mipmaps from level 0.
+		*/
+		void UpdateToGpu(int width, int height, int depth, TextureFormat textureFormat
+			, const uint8_t* data, size_t dataBytesSize, int level = 0, const std::string& debugName = std::string());
+
+		/*
+		void CreateNew( int width, int height, int depth, int numMipmaps
+		, TextureType type, TextureFormat format, ResourceUsage usage
+		, bool cpuReadAccess, bool cpuWriteAccess
+		, const uint8_t **initialSurfaceDataArray, size_t *initialSurfaceDataByteSizes, int numInitialSurfaces
+		, const char *debugName=0);
+		void CreateNew( int width, int height, int depth, int numMipmaps
+		, TextureType type, TextureFormat format, ResourceUsage usage
+		, bool cpuReadAccess, bool cpuWriteAccess
+		, const Image *initialImageArray, int numInitialImages, const char *debugName=0);
+		*/
+
+		/**
+		* Automatically generate mipmaps.
+		*/
+		void GenMipmaps();
+
+		void Bind();
+		void UnBind();
+		bool IsBound() const;
+		static void UnBindAll();
+
+
+		const std::string& Name() const;
+		int Height() const;
+		int Width() const;
+		int Depth() const;
+		TextureFormat Format() const;
+		int NumMipmaps() const;
+		//void SetNumMipmaps(int numMipLevels, bool generateNewMipLevels=true);
+		int CPUSizeBytes() const;
+		int GPUSizeBytes() const;
+		void DisableMipmaps();
+		static int LogicalSizeBytes(int width, int height, int depth, TextureFormat format, int rowalignment);
+
+		GLuint Handle() const;
+	private:
+		void _InitializeImmutableStorage();
+
+		int _GetRowAlignment();
+		void _SetRowAlignment(int alignment);
+
+		void _MutableUpdateToGpu(int width, int height, int depth, TextureFormat textureFormat
+			, const uint8_t* data, size_t dataBytesSize, int level, const std::string& debugName = std::string());
+		void _ImmutableUpdateToGpu(int width, int height, int depth, TextureFormat textureFormat
+			, const uint8_t* data, size_t dataBytesSize, int level, const std::string& debugName = std::string());
+		GLuint m_tex;
+		TextureType m_texture_type;
+		TextureInternalFormat m_internal_format;
+		ResourceUsage m_usage;
+		int m_width, m_height, m_depth, m_rowalignment, m_mipmaps;
+	};
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+	class Shader : boost::noncopyable
+	{
+	public:
+		explicit Shader(ShaderType type);
+		~Shader();
+
+		void LoadFromString(ShaderType type,
+			const char* shaderData,
+			const char* entryPoint = 0,
+			const char* profile = 0);
+
+		void LoadFromFile(ShaderType type,
+			const char* fileName,
+			const char* entryPoint = 0,
+			const char* profile = 0);
+
+		GLuint m_shaderHandle;
+
+	private:
+		ShaderType m_type;
+
+	};
+
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+	struct ShaderProgram : boost::noncopyable
+	{
+	public:
+		explicit ShaderProgram();
+		~ShaderProgram();
+
+		void Attach(Shader& shader);
+
+		int GetUniformLocation(const char* name);
+
+		void Use();
+		bool InUse() const;
+		void Deselect();
+		static void DeselectAll();
+
+		GLuint Handle() const;
+
+		void BindTexture(int index, TextureUnit& texture_unit, Texture& texture, const std::string& samplerName);
+
+		void SetUniform(const float4x4& matrix, const std::string& name);
+		void SetUniform(const float value, const std::string& name);
+		void SetUniform(const int value, const std::string& name);
+		void SetUniform(const float v1, const float v2, const float v3, const std::string& name);
+
+		static void SetFloat4x4(int parameterIndex, const float4x4& matrix);
+		static void SetFloat(int parameterIndex, const float value);
+		static void SetInt(int parameterIndex, const int value);
+		static void SetFloat3(int parameterIndex, const float v1, const float v2, const float v3);
+
+	private:
+		GLuint m_programHandle;
+	};
+
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+	* Just a container that bundles together the texture, texture unit, sampler, and shader name.
+	*/
+	struct MeshTexture {
+		MeshTexture(boost::shared_ptr<Texture> texture
+			, boost::shared_ptr<TextureUnit> texture_unit
+			, boost::shared_ptr<TextureSampler> sampler
+			, std::string sampler_name)
+			: texture(texture)
+			, texture_unit(texture_unit)
+			, sampler(sampler)
+			, sampler_name(sampler_name)
+		{}
+
+		boost::shared_ptr<Texture> texture;
+		boost::shared_ptr<TextureUnit> texture_unit;
+		boost::shared_ptr<TextureSampler> sampler;
+		std::string sampler_name;
+	};
+
+	struct Mesh : boost::noncopyable
+	{
+	public:
+		explicit Mesh(PrimitiveType primType);
+		~Mesh();
+
+		std::vector<boost::shared_ptr<VertexBuffer> > vbs;
+		boost::shared_ptr<IndexBuffer> ib;
+		boost::shared_ptr<ShaderProgram> sp;
+		std::vector<boost::shared_ptr<MeshTexture> > textures;
+
+
+		void GenerateVAO(int startVertexOffset = 0);
+		void LinkShaders();
+
+		///Bind the VAO
+		void Bind();
+		///Unbind the VAO
+		void UnBind();
+
+		bool IsBound() const;
+
+		static void UnBindAll();
+
+		void Draw(int numIndices = -1, int startIndexOffset = 0);
+
+		void CheckValid() const;
+		void CheckValidVBO(int startVertexOffset = 0) const;
+
+		///This loops through all the indices and checks that they are valid
+		void CheckIndexBounds(int numIndices = -1, int startIndexOffset = 0) const;
+
+		const VertexDeclaration& Declaration() const;
+
+		/**
+		* Returns the type of primitives used by this mesh (PrimPoint, PrimLineList, PrimLineStrip, PrimTriangleList or PrimTriangleStrip).
+		*/
+		PrimitiveType PrimType() const;
+
+	private:
+
+		GLuint m_vao;
+		int m_numVertices;
+		///If GenerateVAO() is called with a startVertexOffset > 0, the number
+		/// of renderable vertices will be less.
+		int m_numRenderableVertices;
+		VertexDeclaration m_declaration;
+
+		/**
+		* The primitive type that is used for rendering.
+		*/
+		PrimitiveType m_primType;
+
+
+		template<typename index_t>
+		void _CheckIndexBounds(int numIndices = -1, int startIndexOffset = 0) const;
+
+		friend struct Graphics;
+
+	};
+
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+	struct RenderNode
+	{
+	public:
+
+		boost::shared_ptr<Mesh> mesh;
+		float4x4 xform;
+	};
+
+
+	void ClearBindings();
+
+
+	boost::shared_ptr<ShaderProgram> DefaultShader();
+	boost::shared_ptr<ShaderProgram> DefaultWhiteShader();
+	boost::shared_ptr<ShaderProgram> DefaultSSPCWhiteShader();
+	boost::shared_ptr<ShaderProgram> DefaultTextureShader();
 
 
 }
-
-
 
 #endif

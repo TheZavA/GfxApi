@@ -47,10 +47,6 @@
     <ClInclude Include="cubelib\logic_utility.hpp">
       <Filter>cubelib</Filter>
     </ClInclude>
-    <ClInclude Include="TOctree.h">
-      <Filter>voxel</Filter>
-    </ClInclude>
-    <ClInclude Include="TQueueLocked.h" />
     <ClInclude Include="GfxApi.h">
       <Filter>GfxApi</Filter>
     </ClInclude>
@@ -69,18 +65,38 @@
     <ClInclude Include="voxel\octree.h">
       <Filter>voxel</Filter>
     </ClInclude>
-    <ClInclude Include="voxel\Chunk.h">
-      <Filter>voxel</Filter>
-    </ClInclude>
     <ClInclude Include="voxel\ChunkManager.h">
-      <Filter>voxel</Filter>
-    </ClInclude>
-    <ClInclude Include="voxel\Clipmap.h">
       <Filter>voxel</Filter>
     </ClInclude>
     <ClInclude Include="voxel\svd.h">
       <Filter>voxel</Filter>
     </ClInclude>
+    <ClInclude Include="voxel\common.h">
+      <Filter>voxel</Filter>
+    </ClInclude>
+    <ClInclude Include="voxel\NodeChunk.h">
+      <Filter>voxel</Filter>
+    </ClInclude>
+    <ClInclude Include="voxel\TOctree.h">
+      <Filter>voxel</Filter>
+    </ClInclude>
+    <ClInclude Include="voxel\TQueueLocked.h">
+      <Filter>voxel</Filter>
+    </ClInclude>
+    <ClInclude Include="voxel\HashMap.h">
+      <Filter>voxel</Filter>
+    </ClInclude>
+    <ClInclude Include="voxel\intersection.h">
+      <Filter>voxel</Filter>
+    </ClInclude>
+    <ClInclude Include="voxel\AABBTree.h">
+      <Filter>voxel</Filter>
+    </ClInclude>
+    <ClInclude Include="glcommon.h">
+      <Filter>GfxApi</Filter>
+    </ClInclude>
+    <ClInclude Include="Input.h" />
+    <ClInclude Include="voxel\TerrainLayer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="tinyxml2\tinyxml2.cpp">
@@ -97,18 +113,16 @@
     <ClCompile Include="voxel\octree.cpp">
       <Filter>voxel</Filter>
     </ClCompile>
-    <ClCompile Include="voxel\Chunk.cpp">
-      <Filter>voxel</Filter>
-    </ClCompile>
     <ClCompile Include="voxel\ChunkManager.cpp">
-      <Filter>voxel</Filter>
-    </ClCompile>
-    <ClCompile Include="voxel\Clipmap.cpp">
       <Filter>voxel</Filter>
     </ClCompile>
     <ClCompile Include="voxel\svd.cpp">
       <Filter>voxel</Filter>
     </ClCompile>
+    <ClCompile Include="voxel\NodeChunk.cpp">
+      <Filter>voxel</Filter>
+    </ClCompile>
+    <ClCompile Include="Input.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="noisetest.cl">
@@ -130,5 +144,8 @@
   </ItemGroup>
   <ItemGroup>
     <Library Include="..\OpenGI\lib\OpenGI.lib" />
+    <Library Include="..\lib\assimp-3.1.1\lib\Release\assimp.lib">
+      <Filter>voxel</Filter>
+    </Library>
   </ItemGroup>
 </Project>

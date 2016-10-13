@@ -104,6 +104,7 @@
     <ClInclude Include="voxel\intersection.h" />
     <ClInclude Include="voxel\NodeChunk.h" />
     <ClInclude Include="voxel\octree.h" />
+    <ClInclude Include="voxel\octreemdc.h" />
     <ClInclude Include="voxel\qef.h" />
     <ClInclude Include="voxel\svd.h" />
     <ClInclude Include="voxel\TBorderVolume3d.h" />
@@ -113,6 +114,7 @@
     <ClInclude Include="voxel\TVolume2d.h" />
     <ClInclude Include="voxel\TVolume3d.h" />
     <ClInclude Include="voxel\TVolumePool.h" />
+    <ClInclude Include="voxel\utilities.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GfxApi.cpp" />

@@ -4,3 +4,26 @@
 /Debug
 /Release
 /GfxApi.opensdf
+/doc
+/Texture
+*.psess
+*.vspx
+*.etl
+*.vsp
+/The City.obj
+/OpenGI.dll
+/GfxApi.zip
+/GfxApi.VC.VC.opendb
+/GfxApi.VC.db
+/GfxApi.v11.suo
+/GfxApi.exe
+/FinalBaseMesh.obj
+/Church.3DS
+/Church N300415.gsm
+/Church N300415.3ds
+/castle01.obj
+/castle01.mtl
+/castle01.max
+/Castle.3DS
+/assimp.dll
+/.vs/GfxApi/v14/.suo

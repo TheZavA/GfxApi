@@ -1,6 +1,8 @@
 #include "ChunkManager.h"
 
 #include "NodeChunk.h"
+#include "utilities.h"
+#include "octreemdc.h"
 
 #include <boost/make_shared.hpp>
 #include <boost/scoped_ptr.hpp>
@@ -33,6 +35,7 @@ ChunkManager::ChunkManager( Frustum& camera )
    sources.push_back( "chunk_kernel.cl" );
 
    m_ocl->load_cl_source( sources );
+
 
    boost::shared_ptr<GfxApi::Shader> vs = boost::make_shared<GfxApi::Shader>( GfxApi::ShaderType::VertexShader );
    vs->LoadFromFile( GfxApi::ShaderType::VertexShader, "shader/chunk.vs" );
@@ -70,6 +73,16 @@ ChunkManager::ChunkManager( Frustum& camera )
                     float3( ( float ) WORLD_BOUNDS_MAX_XZ + ( float ) camera.pos.x, ( float ) WORLD_BOUNDS_MAX_Y + ( float ) camera.pos.y, ( float ) WORLD_BOUNDS_MAX_XZ + ( float ) camera.pos.z ) );
 
    m_scene_next = createScene( rootBounds );
+
+   OctreeNodeMdc tree;
+   std::vector<Vertex> vertices;
+
+   tree.ConstructBase( 64, 0.1f, vertices );
+   tree.ClusterCellBase( 0.1f );
+
+   
+   tree.GenerateVertexBuffer( m_mdcVertices );
+   tree.position = float3( 0, 0, 0 );
 
 }
 
@@ -483,7 +496,7 @@ void ChunkManager::updateLoDTree2( Frustum& camera )
 {
 
    /// get the next chunk off the queue that needs its mesh created / uploaded
-   for( std::size_t i = 0; i < 4; ++i )
+   for( std::size_t i = 0; i < 8; ++i )
    {
       auto chunk = m_nodeChunkMeshGeneratorQueue.pop();
       if( !chunk )

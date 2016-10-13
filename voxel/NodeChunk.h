@@ -21,8 +21,6 @@ class ChunkManager;
 class NodeChunk
 {
 public:
-   //int m_occupation[2][2][2];
-
    ChunkManager* m_pChunkManager;
 
    float m_scale;
@@ -32,7 +30,6 @@ public:
    std::atomic< bool > m_bClassified;
 
    std::atomic< bool > m_bGenerated;
-   //std::atomic< bool > m_bGenerationStarted;
 
    AABB m_chunk_bounds;
 
@@ -49,15 +46,7 @@ public:
    boost::shared_ptr< VertexBuffer > m_pVertices;
    boost::shared_ptr< GfxApi::Mesh > m_pMesh;
 
-   //std::vector< OctreeNode > m_seam_nodes;
-
    boost::shared_ptr< TOctree< boost::shared_ptr< NodeChunk > > > m_pTree;
-
-   //boost::shared_ptr< TOctree< TextureTreeNode > > m_pTextureTree;
-
-   //boost::shared_ptr< std::vector< Triangle > > m_pTriangleList;
-
-   void buildTextureOctree( TOctree<TextureTreeNode>& tree );
 
    int32_t m_nodeIdxCurr;
 
@@ -67,8 +56,6 @@ public:
    NodeChunk( float scale, const AABB& bounds, ChunkManager* pChunkManager, bool hasNodes = false );
 
    ~NodeChunk();
-
-   void draw();
 
    std::vector<uint32_t> createLeafNodes();
 

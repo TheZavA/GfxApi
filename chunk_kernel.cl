@@ -195,7 +195,7 @@ classifyEdges(__global const int* densities, __global int* occupied, __global cl
 
 	const int3 coord = (int3)(get_global_id(0), get_global_id(1), get_global_id(2));
 
-    const int3 size = (int3)(get_global_size(0), get_global_size(1), get_global_size(2));
+   const int3 size = (int3)(get_global_size(0), get_global_size(1), get_global_size(2));
 
 	const uint index = ((coord.y * size.x * size.z)) + ((coord.z * size.x)) + coord.x;
 

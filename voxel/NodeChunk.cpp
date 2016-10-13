@@ -14,15 +14,6 @@
 const float QEF_ERROR = 1e-1f;
 const int QEF_SWEEPS = 4;
 
-/* OpenGI error callback */
-void GICALLBACK errorCB( unsigned int error, void *data )
-{
-
-   /* actually default callback in debug but we want it in release, too */
-   fprintf( stderr, "OpenGI error: %s!\n", giErrorString( error ) );
-
-}
-
 int toIntIdx( uint8_t x, uint8_t y, uint8_t z )
 {
    int index = 0;
@@ -74,16 +65,11 @@ void NodeChunk::generateDensities()
 void NodeChunk::generateFullEdges()
 {
 
-
-
-  // memset( m_occupation, 0, 2 * 2 * 2 * 4 );
    int halfSize = ( ChunkManager::CHUNK_SIZE + 1 ) / 2;
 
    typedef boost::chrono::high_resolution_clock Clock;
-   //auto t11 = Clock::now();
+
    memset( m_pChunkManager->m_pCellBuffer->getDataPtr(), 0, m_pChunkManager->m_pCellBuffer->m_xyzSize * 4 );
-   //auto t222 = Clock::now();
-   //std::cout << t222 - t11 << " MEMSET \n";
 
    auto zeroCrossCompact = boost::make_shared<std::vector<cell_t>>();
    zeroCrossCompact->reserve( m_edgesCompact->size() );
@@ -162,13 +148,6 @@ void NodeChunk::generateFullEdges()
       m_pChunkManager->m_ocl->getCompactCorners( &( *compactCorners )[0], ( *compactCorners ).size() );
 
       m_compactCorners = compactCorners;
-
-      //for( auto& corner : *compactCorners )
-      //{
-      //   if( corner.x > 63 || corner.y > 63 || corner.z > 63 )
-      //      continue;
-      //   m_occupation[corner.x / halfSize][corner.y / halfSize][corner.z / halfSize] = 1;
-      //}
    }
    else
    {
@@ -252,32 +231,8 @@ void NodeChunk::createMesh()
 
    m_pMesh = mesh;
 
-   ////if (this->m_pTree->getLevel() > 10)
-   //{
-
-   //	GIcontext pContext = giCreateContext();
-   //	giMakeCurrent(pContext);
-   //	giErrorCallback(errorCB, NULL);
-
-   //	/* set attribute arrays */
-   //	giBindAttrib(GI_POSITION_ATTRIB, 0);
-   //	giBindAttrib(GI_PARAM_ATTRIB, 2);
-   //	giAttribPointer(0, 3, GI_FALSE, 3, (float*) m_pVertices->data());
-   //	giAttribPointer(1, 3, GI_TRUE, 3, (float*)(m_pVertices->data() + 3*4));
-   //	giEnableAttribArray(0);
-   //	giEnableAttribArray(1);
-
-   //	/* create mesh */
-   //	GIuint uiMesh = giGenMesh();
-   //	giBindMesh(uiMesh);
-   //	giGetError();
-   //	giIndexedMesh(0, m_pVertices->size()-1, mesh->ib->NumIndices(), (unsigned int*) mesh->ib->CpuPtr());
-   //}
-
-
    m_pVertices.reset();
    m_pIndices.reset();
-   //m_pOctreeDrawInfo.reset();
    m_zeroCrossCompact.reset();
    m_pOctreeNodes.reset();
 
@@ -446,14 +401,14 @@ std::vector<uint32_t> NodeChunk::createLeafNodes()
       leaf->minz = zeroCl.zPos;
       leaf->type = Node_Leaf;
 
-      int testMat = findPopular( zeroCl.materials, zeroCl.edgeCount );
+      //int testMat = findPopular( zeroCl.materials, zeroCl.edgeCount );
 
-      leaf->material = testMat;
+      //leaf->material = testMat;
 
-      if( testMat == 0 )
+      /*if( testMat == 0 )
       {
          testMat = 0;
-      }
+      }*/
 
       leaf->averageNormal = averageNormal;
       leaf->corners = corner.w;
@@ -483,7 +438,7 @@ void NodeChunk::buildTree( const int size, const float threshold )
 
    auto leafs = createLeafNodes();
 
-   m_octree_root_index = createOctree( leafs, *m_pOctreeNodes, threshold, true, m_nodeIdxCurr );
+   m_octree_root_index = createOctree( leafs, *m_pOctreeNodes, threshold, false, m_nodeIdxCurr );
 
    m_edgesCompact.reset();
 }
@@ -506,43 +461,6 @@ void NodeChunk::createVertices()
    GenerateVertexIndices( m_octree_root_index, *pVertices, *m_pOctreeNodes );
    CellProc( m_octree_root_index, *pIndices, *m_pOctreeNodes );
 
-   /*  auto triangleList = boost::make_shared<std::vector<Triangle>>();
-    auto vertexList = boost::make_shared<std::vector<float3>>();
-
-     for (int i = 0; i < pIndices->size(); i += 3)
-     {
-         float3 v1 = (*pVertices)[(*pIndices)[i]].m_xyz ;
-         float3 v2 = (*pVertices)[(*pIndices)[i+1]].m_xyz ;
-         float3 v3 = (*pVertices)[(*pIndices)[i+2]].m_xyz ;
-
-         triangleList->push_back(Triangle(v1/32, v2/32, v3/32));
-
-       vertexList->push_back(v1);
-       vertexList->push_back(v2);
-       vertexList->push_back(v3);
-     }
-
-     m_pTriangleList = triangleList;
-
-    AABBTreeInfo treeInfo;
-    treeInfo.curr_max_depth = 0;
-    treeInfo.min_vertices = 3 * 3;
-    treeInfo.max_tree_depth = 7;
-    treeInfo.left_children = 0;
-    treeInfo.right_children = 0;*/
-
-    /*AABBNode* newTree;
-    newTree = new AABBNode(*vertexList, treeInfo, 0);
-    TextureTreeNode node;
-    node.node_bounds = AABB(float3(0.0f), float3(1.0f));
-    node.data = float4(0, 0, 0, 0.5f);*/
-
-    // m_pTextureTree.reset(new TOctree<TextureTreeNode>(nullptr, nullptr, node, 1, cube::corner_t::get(0, 0, 0)));
-
-   //  buildTextureOctree(*m_pTextureTree);
-
-     //m_pTriangleList.reset();
-
    if( pVertices->size() <= 1 || pIndices->size() <= 1 )
    {
       m_bHasNodes = false;
@@ -552,65 +470,3 @@ void NodeChunk::createVertices()
    m_pIndices = pIndices;
 }
 
-
-
-//void NodeChunk::buildTextureOctree( TOctree<TextureTreeNode>& tree )
-//{
-//   AABB& node_bounds = tree.getValue().node_bounds;
-//   uint16_t node_level = tree.getLevel();
-//
-//   bool intersection = false;
-//   for( auto& tri : *m_pTriangleList )
-//   {
-//      if( node_bounds.Intersects( tri ) )
-//      {
-//         intersection = true;
-//         break;
-//      }
-//   }
-//
-//   if( intersection && node_level < 6 )
-//   {
-//      tree.getValue().data.w = 0.5f;// INDEX
-//      tree.getValue().data.x = node_bounds.minPoint.x;// INDEX
-//      tree.getValue().data.y = node_bounds.minPoint.y;// INDEX
-//      tree.getValue().data.z = node_bounds.minPoint.z;// INDEX
-//      tree.split();
-//      for( auto& corner : cube::corner_t::all() )
-//      {
-//         auto& child = tree.getChild( corner );
-//         uint8_t level = child->getLevel();
-//
-//
-//         float3 center = node_bounds.CenterPoint();
-//         float3 c0 = node_bounds.CornerPoint( corner.index() );
-//
-//         AABB b0( float3( std::min( c0.x, center.x ),
-//                          std::min( c0.y, center.y ),
-//                          std::min( c0.z, center.z ) ),
-//                  float3( std::max( c0.x, center.x ),
-//                          std::max( c0.y, center.y ),
-//                          std::max( c0.z, center.z ) ) );
-//
-//
-//
-//         child->getValue().node_bounds = b0;
-//
-//
-//         buildTextureOctree( *child );
-//
-//      }
-//   }
-//   else if( intersection && node_level == 6 )
-//   {
-//      tree.getValue().data.x = node_bounds.minPoint.x;// dummy color
-//      tree.getValue().data.y = node_bounds.minPoint.y;// dummy color
-//      tree.getValue().data.z = node_bounds.minPoint.z;// dummy color
-//      tree.getValue().data.w = 1.0f;// DATA
-//   }
-//   else if( !intersection )
-//   {
-//      tree.getValue().data.w = 0.0f;// EMPTY
-//   }
-//
-//}

@@ -14,6 +14,7 @@
 #include "TOctree.h"
 #include "TQueueLocked.h"
 #include "TVolume3d.h"
+#include "octreemdc.h"
 
 class NodeChunk;
 
@@ -93,6 +94,8 @@ public:
    std::vector< boost::shared_ptr< GfxApi::ShaderProgram > > m_shaders;
 
    boost::shared_ptr< GfxApi::ShaderProgram > m_pLastShader;
+
+   std::vector< VertexPositionNormal> m_mdcVertices;
 
 };
 

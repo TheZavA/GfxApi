@@ -35,27 +35,30 @@ class Vertex
 {
 public:
    boost::shared_ptr<Vertex> m_pParent;
-   int index;
-   bool collapsible;
-   QefSolver qef;
-   float3 normal;
-   float3 position;
-   int surface_index;
+   int m_index;
+   bool m_collapsible;
+   QefSolver m_qef;
+   float3 m_normal;
+   float3 m_position;
+   int m_surface_index;
    //Vector3 Position{ get{ if( qef != null ) return qef.Solve( 1e-6f, 4, 1e-6f ); return Vector3.Zero; } }
-   float error;
-   int euler;
-   int* eis;
-   int in_cell;
-   bool face_prop2;
+   float m_error;
+   int m_euler;
+   int m_eis[12];
+   int m_in_cell;
+   bool m_face_prop2;
 
    Vertex()
    {
+      m_qef.reset();
       m_pParent = nullptr;
-      index = -1;
-      collapsible = true;
-      normal = float3::zero;
-      surface_index = -1;
-      eis = nullptr;
+      m_index = -1;
+      m_collapsible = true;
+      m_position = float3::zero;
+      m_normal = float3::zero;
+      m_surface_index = -1;
+      //m_eis = { 0 };
+      m_error = 0;
    }
 };
 
@@ -64,70 +67,86 @@ public:
 class OctreeNodeMdc
 {
 public:
-   int index;
-   float3 position;
-   int size;
-   boost::shared_ptr< OctreeNodeMdc > children[8];
-   NodeType type;
+   int      m_index;
+   int      m_size;
+   int32_t  m_childIndex[8];
+   int      m_child_index;
+   uint8_t  m_corners;
+   NodeType m_type;
+   uint8_t  m_gridX;
+   uint8_t  m_gridY;
+   uint8_t  m_gridZ;
+
    std::vector< boost::shared_ptr< Vertex > > m_vertices;
-   //Vertex** vertices;
-   uint8_t corners;
-   int child_index;
 
-   static bool EnforceManifold;
-
-   float sphereFunction( float x, float y, float z )
-   {
-      return ( x*x + y*y + z*z ) - 110.1f;
-   }
+   //static bool EnforceManifold;
 
    OctreeNodeMdc()
+      : m_gridX( 0 )
+      , m_gridY( 0 )
+      , m_gridZ( 0 )
+      , m_corners( 0 )
+      , m_size( 0 )
+      , m_type( NodeType::Leaf )
+      , m_index( 0 )
+      , m_child_index( 0 )
    {
-      corners = 0;
-      position = float3::zero;
-      size = 0;
+      for( int i = 0; i < 8; i++ )
+      {
+      m_childIndex[i] = -1;
+      }
    }
 
    OctreeNodeMdc( float3 inPosition, int inSize, NodeType inType )
-      : position( inPosition )
-      , index( 0 )
-      , size( inSize )
-      , type( inType )
-      , corners( 0 )
+      : m_index( 0 )
+      , m_size( inSize )
+      , m_type( inType )
+      , m_corners( 0 )
+      , m_gridX( 0 )
+      , m_gridY( 0 )
+      , m_gridZ( 0 )
+      , m_child_index( 0 )
    {
+      // init childindices to -1 (empty)
+      for( int i = 0; i < 8; i++ )
+      {
+      m_childIndex[i] = -1;
+      }
    }
 
-   void GenerateVertexBuffer( std::vector<VertexPositionNormal>& vertices )
+   void GenerateVertexBuffer( std::vector<VertexPositionNormal>& vertices,
+                              std::vector< OctreeNodeMdc >& nodeList )
    {
-      if( type != NodeType::Leaf )
+      if( m_type != NodeType::Leaf )
       {
          for( int i = 0; i < 8; i++ )
          {
-            if( children[i] != nullptr )
-               children[i]->GenerateVertexBuffer( vertices );
+            if( m_childIndex[i] != -1 )
+            {
+               auto node = &nodeList[m_childIndex[i]];
+               node->GenerateVertexBuffer( vertices, nodeList );
+            }
+
          }
       }
 
-      if( /*vertices == null ||*/ m_vertices.size() == 0 )
+      if( m_vertices.size() == 0 )
          return;
 
       for( int i = 0; i < m_vertices.size(); i++ )
       {
          if( m_vertices[i] == nullptr )
             continue;
-         m_vertices[i]->index = vertices.size();
-         //            Vector3 nc = this.vertices[i].normal * 0.5f + Vector3.One * 0.5f;
-         //            nc.Normalize();
-         //            Color c = new Color( nc );
+         m_vertices[i]->m_index = vertices.size();
          Vec3 outPos;
-         m_vertices[i]->qef.solve( outPos, 1e-6f, 4, 1e-6f );
+         m_vertices[i]->m_qef.solve( outPos, 1e-6f, 4, 1e-6f );
          VertexPositionNormal vertex;
          vertex.position.x = outPos.x;
          vertex.position.y = outPos.y;
          vertex.position.z = outPos.z;
-         vertex.normal.x = m_vertices[i]->normal.x;
-         vertex.normal.y = m_vertices[i]->normal.y;
-         vertex.normal.z = m_vertices[i]->normal.z;
+         vertex.normal.x = m_vertices[i]->m_normal.x;
+         vertex.normal.y = m_vertices[i]->m_normal.y;
+         vertex.normal.z = m_vertices[i]->m_normal.z;
 
          vertices.push_back( vertex );
 
@@ -135,225 +154,93 @@ public:
 
    }
 
-   void ConstructBase( int size, float error, const std::vector<Vertex>& vertices )
+   void ConstructBase( int size, std::vector<  OctreeNodeMdc * >& nodeList, float scale )
    {
-      index = 0;
-      position = float3::zero;
-      this->size = size;
-      type = NodeType::Internal;
-      child_index = 0;
+      m_index = 0;
+      m_size = size;
+      m_type = NodeType::Internal;
+      m_child_index = 0;
       int n_index = 1;
-      ConstructNodes( n_index, 1 );
+      //  ConstructNodes( n_index, nodeList );
    }
 
-   bool ConstructNodes( int& n_index, int threaded = 0 )
+
+
+   void ProcessCell( std::vector<int>& indexes,
+                     std::vector<int>& tri_count,
+                     float threshold,
+                     std::vector<  OctreeNodeMdc  >& nodeList )
    {
-      if( size == 1 )
-      {
-         return ConstructLeaf( n_index );
-      }
-
-      type = NodeType::Internal;
-      int child_size = size / 2;
-      bool has_children = false;
-
-      for( int i = 0; i < 8; i++ )
-      {
-         index = n_index++;
-         float3 child_pos = float3( Utilities::TCornerDeltas[i][0],
-                                    Utilities::TCornerDeltas[i][1],
-                                    Utilities::TCornerDeltas[i][2] );
-
-         children[i] = boost::make_shared<OctreeNodeMdc>( position + child_pos * ( float ) child_size,
-                                                          child_size,
-                                                          NodeType::Internal );
-         children[i]->child_index = i;
-
-         int index = i;
-         if( children[i]->ConstructNodes( n_index, 0 ) )
-            has_children = true;
-         else
-         {
-            children[i].reset();
-         }
-
-      }
-
-      return has_children;
-   }
-
-   bool ConstructLeaf( int& index )
-   {
-      if( size != 1 )
-         return false;
-
-      this->index = index++;
-      type = NodeType::Leaf;
-      int corners1 = 0;
-      float samples[8];
-      for( int i = 0; i < 8; i++ )
-      {
-         float3 pos;
-         pos.x = position.x + Utilities::TCornerDeltas[i][0];
-         pos.y = position.y + Utilities::TCornerDeltas[i][1];
-         pos.z = position.z + Utilities::TCornerDeltas[i][2];
-         if( ( samples[i] = sphereFunction( pos.x, pos.y, pos.z ) ) < 0 )
-            corners1 |= 1 << i;
-      }
-      this->corners = ( uint8_t ) corners1;
-
-      if( corners1 == 0 || corners1 == 255 )
-         return false;
-
-      int8_t v_edges[5][13];
-
-      memset( v_edges, -1, 5 * 13 );
-
-      m_vertices.reserve( Utilities::TransformedVerticesNumberTable[corners1] );
-
-      int v_index = 0;
-      int e_index = 0;
-
-      for( int e = 0; e < 16; e++ )
-      {
-         int code = Utilities::TransformedEdgesTable[corners1][e];
-         if( code == -2 )
-         {
-            v_index++;
-            break;
-         }
-         if( code == -1 )
-         {
-            v_index++;
-            e_index = 0;
-            continue;
-         }
-
-         v_edges[v_index][e_index++] = code;
-      }
-
-      for( int i = 0; i < v_index; i++ )
-      {
-         int k = 0;
-         auto pVertex = boost::make_shared<Vertex>();
-
-         float3 normal = float3::zero;
-         int ei[12];
-         while( v_edges[i][k] != -1 )
-         {
-            ei[v_edges[i][k]] = 1;
-            float3 a = position + float3( Utilities::TCornerDeltas[Utilities::TEdgePairs[v_edges[i][k]][0]][0],
-                                          Utilities::TCornerDeltas[Utilities::TEdgePairs[v_edges[i][k]][0]][1],
-                                          Utilities::TCornerDeltas[Utilities::TEdgePairs[v_edges[i][k]][0]][2] ) * size;
-
-            float3 b = position + float3( Utilities::TCornerDeltas[Utilities::TEdgePairs[v_edges[i][k]][1]][0],
-                                          Utilities::TCornerDeltas[Utilities::TEdgePairs[v_edges[i][k]][1]][1],
-                                          Utilities::TCornerDeltas[Utilities::TEdgePairs[v_edges[i][k]][1]][2] ) * size;
-
-            // right, for now just take the avg
-            float3 intersection = ( a + b ) / 2;
-            float H = 0.001;
-            float3 xyz1 = intersection + ( float3 ) ( H, 0.f, 0.f );
-            float3 xyz1_1 = intersection - ( float3 ) ( H, 0.f, 0.f );
-
-            float3 xyz2 = intersection + ( float3 ) ( 0, H, 0.f );
-            float3 xyz2_1 = intersection - ( float3 ) ( 0, H, 0.f );
-
-            float3 xyz3 = intersection + ( float3 ) ( 0, 0, H );
-            float3 xyz3_1 = intersection - ( float3 ) ( 0, 0, H );
-
-            const float dx = sphereFunction( xyz1.x, xyz1.y, xyz1.z ) - sphereFunction( xyz1_1.x, xyz1_1.y, xyz1_1.z );
-            const float dy = sphereFunction( xyz2.x, xyz2.y, xyz2.z ) - sphereFunction( xyz2_1.x, xyz2_1.y, xyz2_1.z );
-            const float dz = sphereFunction( xyz3.x, xyz3.y, xyz3.z ) - sphereFunction( xyz3_1.x, xyz3_1.y, xyz3_1.z );
-
-            float3 n( dx, dy, dz );
-
-            //float3 n = a.Normalized();
-            normal += n;
-            pVertex->qef.add( intersection.x, intersection.y, intersection.z, n.x, n.y, n.z );
-
-            //            Vector3 intersection = Sampler.GetIntersection( a, b, samples[Utilities.TEdgePairs[v_edges[i][k], 0]], samples[Utilities.TEdgePairs[v_edges[i][k], 1]] );
-            //            Vector3 n = Sampler.GetNormal( intersection );
-            //            normal += n;
-            //            this.vertices[i].qef.Add( intersection, n );
-            k++;
-         }
-
-         normal /= ( float ) k;
-         normal.Normalize();
-         pVertex->index = 0;
-         pVertex->m_pParent = nullptr;
-         pVertex->collapsible = true;
-         pVertex->normal = normal;
-         pVertex->euler = 1;
-         pVertex->eis = ei;
-         pVertex->in_cell = child_index;
-         pVertex->face_prop2 = true;
-         m_vertices.push_back( pVertex );
-
-      }
-
-      return true;
-   }
-
-   void ProcessCell( std::vector<int>& indexes, std::vector<int>& tri_count, float threshold )
-   {
-      if( type == NodeType::Internal )
+      if( m_type == NodeType::Internal )
       {
          for( int i = 0; i < 8; i++ )
          {
-            if( children[i] != nullptr )
-               children[i]->ProcessCell( indexes, tri_count, threshold );
+            if( m_childIndex[i] != -1 )
+            {
+               auto node = &nodeList[m_childIndex[i]];
+               node->ProcessCell( indexes, tri_count, threshold, nodeList );
+            }
+
          }
 
          for( int i = 0; i < 12; i++ )
          {
-            boost::shared_ptr< OctreeNodeMdc > face_nodes[2];
+            int32_t face_nodes[2];
 
             int c1 = Utilities::TEdgePairs[i][0];
             int c2 = Utilities::TEdgePairs[i][1];
 
-            face_nodes[0] = children[c1];
-            face_nodes[1] = children[c2];
+            face_nodes[0] = m_childIndex[c1];
+            face_nodes[1] = m_childIndex[c2];
 
-            ProcessFace( face_nodes, Utilities::TEdgePairs[i][2], indexes, tri_count, threshold );
+            ProcessFace( face_nodes, Utilities::TEdgePairs[i][2], indexes, tri_count, threshold, nodeList );
          }
 
          for( int i = 0; i < 6; i++ )
          {
-            boost::shared_ptr< OctreeNodeMdc > edge_nodes[4] =
+            int32_t edge_nodes[4] =
             {
-               children[Utilities::TCellProcEdgeMask[i][0]],
-               children[Utilities::TCellProcEdgeMask[i][1]],
-               children[Utilities::TCellProcEdgeMask[i][2]],
-               children[Utilities::TCellProcEdgeMask[i][3]]
+               m_childIndex[Utilities::TCellProcEdgeMask[i][0]],
+               m_childIndex[Utilities::TCellProcEdgeMask[i][1]],
+               m_childIndex[Utilities::TCellProcEdgeMask[i][2]],
+               m_childIndex[Utilities::TCellProcEdgeMask[i][3]]
             };
 
-            ProcessEdge( edge_nodes, Utilities::TCellProcEdgeMask[i][4], indexes, tri_count, threshold );
+            ProcessEdge( edge_nodes, Utilities::TCellProcEdgeMask[i][4], indexes, tri_count, threshold, nodeList );
          }
       }
    }
 
-   void ProcessFace( boost::shared_ptr< OctreeNodeMdc > nodes[2], int direction, std::vector<int>& indexes, std::vector<int>& tri_count, float threshold )
+   void ProcessFace( int32_t nodes[2],
+                     int direction,
+                     std::vector<int>& indexes,
+                     std::vector<int>& tri_count,
+                     float threshold,
+                     std::vector<  OctreeNodeMdc >& nodeList )
    {
-      if( nodes[0] == nullptr || nodes[1] == nullptr )
+      if( nodes[0] == -1 || nodes[1] == -1 )
          return;
 
-      if( nodes[0]->type != NodeType::Leaf || nodes[1]->type != NodeType::Leaf )
+      auto node0 = &nodeList[nodes[0]];
+      auto node1 = &nodeList[nodes[1]];
+
+      if( node0->m_type != NodeType::Leaf ||
+          node1->m_type != NodeType::Leaf )
       {
          for( int i = 0; i < 4; i++ )
          {
-            boost::shared_ptr< OctreeNodeMdc > face_nodes[2];
+            int32_t face_nodes[2];
 
             for( int j = 0; j < 2; j++ )
             {
-               if( nodes[j]->type == NodeType::Leaf )
+               auto node = &nodeList[nodes[j]];
+               if( node->m_type == NodeType::Leaf )
                   face_nodes[j] = nodes[j];
                else
-                  face_nodes[j] = nodes[j]->children[Utilities::TFaceProcFaceMask[direction][i][j]];
+                  face_nodes[j] = node->m_childIndex[Utilities::TFaceProcFaceMask[direction][i][j]];
             }
 
-            ProcessFace( face_nodes, Utilities::TFaceProcFaceMask[direction][i][2], indexes, tri_count, threshold );
+            ProcessFace( face_nodes, Utilities::TFaceProcFaceMask[direction][i][2], indexes, tri_count, threshold, nodeList );
          }
 
          int orders[2][4] =
@@ -364,49 +251,70 @@ public:
 
          for( int i = 0; i < 4; i++ )
          {
-            boost::shared_ptr< OctreeNodeMdc > edge_nodes[4];
+            int32_t edge_nodes[4];
 
             for( int j = 0; j < 4; j++ )
             {
-               if( nodes[orders[Utilities::TFaceProcEdgeMask[direction][i][0]][j]]->type == NodeType::Leaf )
-                  edge_nodes[j] = nodes[orders[Utilities::TFaceProcEdgeMask[direction][i][0]][j]];
+               int32_t nodeIndex = nodes[orders[Utilities::TFaceProcEdgeMask[direction][i][0]][j]];
+               auto node = &nodeList[nodeIndex];
+               if( node->m_type == NodeType::Leaf )
+                  edge_nodes[j] = nodeIndex;
                else
-                  edge_nodes[j] = nodes[orders[Utilities::TFaceProcEdgeMask[direction][i][0]][j]]->children[Utilities::TFaceProcEdgeMask[direction][i][1 + j]];
+                  edge_nodes[j] = node->m_childIndex[Utilities::TFaceProcEdgeMask[direction][i][1 + j]];
             }
-            ProcessEdge( edge_nodes, Utilities::TFaceProcEdgeMask[direction][i][5], indexes, tri_count, threshold );
+            ProcessEdge( edge_nodes, Utilities::TFaceProcEdgeMask[direction][i][5], indexes, tri_count, threshold, nodeList );
          }
       }
    }
 
-   void ProcessEdge( boost::shared_ptr< OctreeNodeMdc > nodes[4], int direction, std::vector<int>& indexes, std::vector<int>& tri_count, float threshold )
+   void ProcessEdge( int32_t nodes[4],
+                     int direction,
+                     std::vector<int>& indexes,
+                     std::vector<int>& tri_count,
+                     float threshold,
+                     std::vector<  OctreeNodeMdc >& nodeList )
    {
-      if( nodes[0] == nullptr || nodes[1] == nullptr || nodes[2] == nullptr || nodes[3] == nullptr )
+      if( nodes[0] == -1 || nodes[1] == -1 || nodes[2] == -1 || nodes[3] == -1 )
          return;
 
-      if( nodes[0]->type == NodeType::Leaf && nodes[1]->type == NodeType::Leaf && nodes[2]->type == NodeType::Leaf && nodes[3]->type == NodeType::Leaf )
+      auto node0 = &nodeList[nodes[0]];
+      auto node1 = &nodeList[nodes[1]];
+      auto node2 = &nodeList[nodes[2]];
+      auto node3 = &nodeList[nodes[3]];
+
+      if( node0->m_type == NodeType::Leaf &&
+          node1->m_type == NodeType::Leaf &&
+          node2->m_type == NodeType::Leaf &&
+          node3->m_type == NodeType::Leaf )
       {
-         ProcessIndexes( nodes, direction, indexes, tri_count, threshold );
+         ProcessIndexes( nodes, direction, indexes, tri_count, threshold, nodeList );
       }
       else
       {
          for( int i = 0; i < 2; i++ )
          {
-            boost::shared_ptr< OctreeNodeMdc > edge_nodes[4];
+            int32_t edge_nodes[4];
 
             for( int j = 0; j < 4; j++ )
             {
-               if( nodes[j]->type == NodeType::Leaf )
+               auto node = &nodeList[nodes[j]];
+               if( node->m_type == NodeType::Leaf )
                   edge_nodes[j] = nodes[j];
                else
-                  edge_nodes[j] = nodes[j]->children[Utilities::TEdgeProcEdgeMask[direction][i][j]];
+                  edge_nodes[j] = node->m_childIndex[Utilities::TEdgeProcEdgeMask[direction][i][j]];
             }
 
-            ProcessEdge( edge_nodes, Utilities::TEdgeProcEdgeMask[direction][i][4], indexes, tri_count, threshold );
+            ProcessEdge( edge_nodes, Utilities::TEdgeProcEdgeMask[direction][i][4], indexes, tri_count, threshold, nodeList );
          }
       }
    }
 
-   void ProcessIndexes( boost::shared_ptr< OctreeNodeMdc > nodes[4], int direction, std::vector<int>& indexes, std::vector<int>& tri_count, float threshold )
+   void ProcessIndexes( int32_t nodes[4],
+                        int direction,
+                        std::vector<int>& indexes,
+                        std::vector<int>& tri_count,
+                        float threshold,
+                        std::vector<  OctreeNodeMdc  >& nodeList )
    {
       int min_size = 10000000;
       int min_index = 0;
@@ -421,15 +329,18 @@ public:
          int c1 = Utilities::TEdgePairs[edge][0];
          int c2 = Utilities::TEdgePairs[edge][1];
 
-         int m1 = ( nodes[i]->corners >> c1 ) & 1;
-         int m2 = ( nodes[i]->corners >> c2 ) & 1;
+         auto node = nodeList[nodes[i]];
 
-         if( nodes[i]->size < min_size )
+         int m1 = ( node.m_corners >> c1 ) & 1;
+         int m2 = ( node.m_corners >> c2 ) & 1;
+
+         if( node.m_size < min_size )
          {
-            min_size = nodes[i]->size;
+            min_size = node.m_size;
             min_index = i;
             flip = m1 == 1;
-            sign_changed = ( ( m1 == 0 && m2 != 0 ) || ( m1 != 0 && m2 == 0 ) );
+            sign_changed = ( ( m1 == 0 && m2 != 0 ) ||
+               ( m1 != 0 && m2 == 0 ) );
          }
 
          //find the vertex index
@@ -438,7 +349,7 @@ public:
 
          for( int k = 0; k < 16; k++ )
          {
-            int e = Utilities::TransformedEdgesTable[nodes[i]->corners][k];
+            int e = Utilities::TransformedEdgesTable[node.m_corners][k];
             if( e == -1 )
             {
                index++;
@@ -458,15 +369,17 @@ public:
 
          v_count++;
          // not sure i ported this correctly
-         if( index >= nodes[i]->m_vertices.size() )
+         if( index >= node.m_vertices.size() )
             return;
-         boost::shared_ptr<Vertex> v = nodes[i]->m_vertices[index];
+         boost::shared_ptr<Vertex> v = node.m_vertices[index];
          boost::shared_ptr<Vertex> highest = v;
          while( highest->m_pParent != nullptr )
          {
-            if( highest->m_pParent->collapsible
-                || ( highest->m_pParent->error <= threshold
-                     && ( !true || ( highest->m_pParent->euler == 1 && highest->m_pParent->face_prop2 ) ) ) )
+            //assert( highest->m_pParent->m_error >= 0 );
+            if( /*highest->m_pParent->m_collapsible
+                ||*/ ( highest->m_pParent->m_error <= threshold
+                       && ( !true || ( highest->m_pParent->m_euler == 1 &&
+                                       highest->m_pParent->m_face_prop2 ) ) ) )
             {
                highest = highest->m_pParent;
                v = highest;
@@ -475,7 +388,7 @@ public:
                highest = highest->m_pParent;
          }
 
-         indices[i] = v->index;
+         indices[i] = v->m_index;
 
       }
 
@@ -545,55 +458,54 @@ public:
       }
    }
 
-   void ClusterCellBase( float error )
+   void ClusterCellBase( float error,
+                         std::vector<  OctreeNodeMdc >& nodeList )
    {
-      if( type != NodeType::Internal )
+      if( m_type != NodeType::Internal )
          return;
 
       for( int i = 0; i < 8; i++ )
       {
-         if( children[i] == nullptr )
+         if( m_childIndex[i] == -1 )
             continue;
 
-         children[i]->ClusterCell( error );
+         auto node = &nodeList[m_childIndex[i]];
+         node->ClusterCell( error, nodeList );
       }
    }
 
    /*
    * Cell stage
    */
-   void ClusterCell( float error )
+   void ClusterCell( float error,
+                     std::vector<  OctreeNodeMdc  >& nodeList )
    {
-      if( type != NodeType::Internal )
+      if( m_type != NodeType::Internal )
          return;
 
       // First cluster all the children nodes
-      int signs[8] = { -1, -1, -1, -1, -1, -1, -1, -1 };
-      int mid_sign = -1;
 
-      bool is_collapsible = true;
+      //bool is_collapsible = true;
       for( int i = 0; i < 8; i++ )
       {
-         if( children[i] == nullptr )
+         if( m_childIndex[i] == -1 )
             continue;
 
-         children[i]->ClusterCell( error );
-         if( children[i]->type == NodeType::Internal ) //Can't cluster if the child has children
-            is_collapsible = false;
-         else
-         {
-            mid_sign = ( children[i]->corners >> ( 7 - i ) ) & 1;
-            signs[i] = ( children[i]->corners >> i ) & 1;
-         }
-      }
 
-      corners = 0;
-      for( int i = 0; i < 8; i++ )
-      {
-         if( signs[i] == -1 )
-            corners |= ( uint8_t ) ( mid_sign << i );
-         else
-            corners |= ( uint8_t ) ( signs[i] << i );
+         auto node = &nodeList[m_childIndex[i]];
+
+         if( node->m_type == NodeType::Leaf )
+            continue;
+
+         node->ClusterCell( error, nodeList );
+
+         //if( node->m_type == NodeType::Internal ) //Can't cluster if the child has children
+         //   is_collapsible = false;
+         //else
+         //{
+         //   mid_sign = ( node->m_corners >> ( 7 - i ) ) & 1;
+         //   signs[i] = ( node->m_corners >> i ) & 1;
+         //}
       }
 
       int surface_index = 0;
@@ -605,27 +517,27 @@ public:
       */
       for( int i = 0; i < 12; i++ )
       {
-         boost::shared_ptr< OctreeNodeMdc> face_nodes[2];
+         int32_t face_nodes[2] = { -1, -1 };
 
          int c1 = Utilities::TEdgePairs[i][0];
          int c2 = Utilities::TEdgePairs[i][1];
-         face_nodes[0] = children[c1];
-         face_nodes[1] = children[c2];
+         face_nodes[0] = m_childIndex[c1];
+         face_nodes[1] = m_childIndex[c2];
 
-         ClusterFace( face_nodes, Utilities::TEdgePairs[i][2], surface_index, collected_vertices );
+         ClusterFace( face_nodes, Utilities::TEdgePairs[i][2], surface_index, collected_vertices, nodeList );
       }
 
       for( int i = 0; i < 6; i++ )
       {
-         boost::shared_ptr< OctreeNodeMdc> edge_nodes[4] =
+         int32_t edge_nodes[4] =
          {
-            children[Utilities::TCellProcEdgeMask[i][0]],
-            children[Utilities::TCellProcEdgeMask[i][1]],
-            children[Utilities::TCellProcEdgeMask[i][2]],
-            children[Utilities::TCellProcEdgeMask[i][3]]
+            m_childIndex[Utilities::TCellProcEdgeMask[i][0]],
+            m_childIndex[Utilities::TCellProcEdgeMask[i][1]],
+            m_childIndex[Utilities::TCellProcEdgeMask[i][2]],
+            m_childIndex[Utilities::TCellProcEdgeMask[i][3]]
          };
 
-         ClusterEdge( edge_nodes, Utilities::TCellProcEdgeMask[i][4], surface_index, collected_vertices );
+         ClusterEdge( edge_nodes, Utilities::TCellProcEdgeMask[i][4], surface_index, collected_vertices, nodeList );
       }
 
       int highest_index = surface_index;
@@ -633,21 +545,21 @@ public:
       if( highest_index == -1 )
          highest_index = 0;
 
-      /*
-      * Gather the stray vertices
-      */
       for( int i = 0; i < 8; i++ )
       {
-         auto n = children[i];
-         if( n == nullptr )
+
+         if( m_childIndex[i] == -1 )
             continue;
+
+         auto node = nodeList[m_childIndex[i]];
+
          for( auto v : m_vertices )
          {
             if( v == nullptr )
                continue;
-            if( v->surface_index == -1 )
+            if( v->m_surface_index == -1 )
             {
-               v->surface_index = highest_index++;
+               v->m_surface_index = highest_index++;
                collected_vertices.push_back( v );
             }
          }
@@ -661,28 +573,28 @@ public:
             QefSolver qef;
             float3 normal = float3( 0, 0, 0 );
             int count = 0;
-            int edges[12];
+            int edges[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
             int euler = 0;
             int e = 0;
             for( auto v : collected_vertices )
             {
-               if( v->surface_index == i )
+               if( v->m_surface_index == i )
                {
                   /* Calculate ei(Sv) */
                   for( int k = 0; k < 3; k++ )
                   {
-                     int edge = Utilities::TExternalEdges[v->in_cell][k];
-                     edges[edge] += v->eis[edge];
+                     int edge = Utilities::TExternalEdges[v->m_in_cell][k];
+                     edges[edge] += v->m_eis[edge];
                   }
                   /* Calculate e(Svk) */
                   for( int k = 0; k < 9; k++ )
                   {
-                     int edge = Utilities::TInternalEdges[v->in_cell][k];
-                     e += v->eis[edge];
+                     int edge = Utilities::TInternalEdges[v->m_in_cell][k];
+                     e += v->m_eis[edge];
                   }
-                  euler += v->euler;
-                  qef.add( v->qef.getData() );
-                  normal += v->normal;
+                  euler += v->m_euler;
+                  qef.add( v->m_qef.getData() );
+                  normal += v->m_normal;
                   count++;
                }
             }
@@ -712,38 +624,40 @@ public:
             boost::shared_ptr< Vertex > new_vertex = boost::make_shared< Vertex >();
             normal /= ( float ) count;
             normal.Normalize();
-            new_vertex->normal = normal;
-            new_vertex->qef.add( qef.getData() );
-            new_vertex->eis = edges;
-            new_vertex->euler = euler - e / 4;
+            new_vertex->m_normal = normal;
+            new_vertex->m_qef.add( qef.getData() );
+            memcpy( new_vertex->m_eis, edges, 12 * 4 );
+            new_vertex->m_euler = euler - e / 4;
 
-            new_vertex->in_cell = child_index;
-            new_vertex->face_prop2 = face_prop2;
+            new_vertex->m_in_cell = m_child_index;
+            new_vertex->m_face_prop2 = face_prop2;
 
-            new_vertices.push_back( new_vertex );
             Vec3 outVec;
 
-            qef.solve( outVec, 1e-6f, 4, 1e-6f );
-            new_vertex->position.x = outVec.x;
-            new_vertex->position.y = outVec.y;
-            new_vertex->position.z = outVec.z;
-            /*  new_vertex->position.y = outVec.y;
-            new_vertex->position.z = outVec.z;*/
-            float err = qef.getError();
-            new_vertex->collapsible = err <= error;
-            new_vertex->error = err;
+            new_vertex->m_qef.solve( outVec, 1e-6f, 4, 1e-6f );
+
+            new_vertex->m_position.x = outVec.x;
+            new_vertex->m_position.y = outVec.y;
+            new_vertex->m_position.z = outVec.z;
+
+            float err = new_vertex->m_qef.getError();
+            //assert( err >= 0 );
+
+            new_vertex->m_collapsible = err <= error;
+            new_vertex->m_error = err;
+
+            new_vertices.push_back( new_vertex );
+
+
             clustered_count++;
 
             for( auto v : collected_vertices )
             {
-               if( v->surface_index == i )
+               if( v->m_surface_index == i )
                {
-                  if( v->position.x != new_vertex->position.x ||
-                      v->position.y != new_vertex->position.y ||
-                      v->position.z != new_vertex->position.z )
-                     v->m_pParent = new_vertex;
-                  else
-                     v->m_pParent = nullptr;
+
+                  v->m_pParent = new_vertex;
+
                }
             }
          }
@@ -755,54 +669,68 @@ public:
 
       for( auto v2 : collected_vertices )
       {
-         v2->surface_index = -1;
+         v2->m_surface_index = -1;
       }
       m_vertices = new_vertices;
    }
 
-   void GatherVertices( boost::shared_ptr< OctreeNodeMdc> n, std::vector<boost::shared_ptr<Vertex>>& dest, int surface_index )
+   void GatherVertices( int32_t n,
+                        std::vector<boost::shared_ptr<Vertex>>& dest,
+                        int& surface_index,
+                        std::vector<  OctreeNodeMdc >& nodeList )
    {
-      if( n == nullptr )
+      if( n == -1 )
          return;
-      if( n->size > 1 )
+      auto node = &nodeList[n];
+
+      if( node->m_size > 1 )
       {
          for( int i = 0; i < 8; i++ )
-            GatherVertices( n->children[i], dest, surface_index );
+            GatherVertices( node->m_childIndex[i], dest, surface_index, nodeList );
       }
       else
       {
-         for( auto v : n->m_vertices )
+         for( auto v : node->m_vertices )
          {
-            if( v->surface_index == -1 )
+            if( v->m_surface_index == -1 )
             {
-               v->surface_index = surface_index++;
+               v->m_surface_index = surface_index++;
                dest.push_back( v );
             }
          }
       }
    }
 
-   void ClusterFace( boost::shared_ptr< OctreeNodeMdc > nodes[2], int direction, int surface_index, std::vector < boost::shared_ptr< Vertex > >& collected_vertices )
+   void ClusterFace( int32_t nodes[2],
+                     int direction,
+                     int& surface_index,
+                     std::vector < boost::shared_ptr< Vertex > >& collected_vertices,
+                     std::vector< OctreeNodeMdc >& nodeList )
    {
-      if( nodes[0] == nullptr || nodes[1] == nullptr )
+      if( nodes[0] == -1 || nodes[1] == -1 )
          return;
 
-      if( nodes[0]->type != NodeType::Leaf || nodes[1]->type != NodeType::Leaf )
+      auto node0 = &nodeList[nodes[0]];
+      auto node1 = &nodeList[nodes[1]];
+
+      if( node0->m_type != NodeType::Leaf ||
+          node1->m_type != NodeType::Leaf )
       {
          for( int i = 0; i < 4; i++ )
          {
-            boost::shared_ptr< OctreeNodeMdc > face_nodes[2];
+            int32_t face_nodes[2] = { -1, -1 };
 
             for( int j = 0; j < 2; j++ )
             {
-               if( nodes[j] == nullptr )
+               if( nodes[j] == -1 )
                   continue;
-               if( nodes[j]->type != NodeType::Internal )
+               auto node = &nodeList[nodes[j]];
+               if( node->m_type != NodeType::Internal )
                   face_nodes[j] = nodes[j];
                else
-                  face_nodes[j] = nodes[j]->children[Utilities::TFaceProcFaceMask[direction][i][j]];
+                  face_nodes[j] = node->m_childIndex[Utilities::TFaceProcFaceMask[direction][i][j]];
             }
-            ClusterFace( face_nodes, Utilities::TFaceProcFaceMask[direction][i][2], surface_index, collected_vertices );
+            ClusterFace( face_nodes, Utilities::TFaceProcFaceMask[direction][i][2], surface_index, collected_vertices, nodeList );
          }
       }
 
@@ -814,59 +742,64 @@ public:
 
       for( int i = 0; i < 4; i++ )
       {
-         boost::shared_ptr< OctreeNodeMdc > edge_nodes[4];
+         int32_t edge_nodes[4] = { -1, -1, -1, -1 };
          for( int j = 0; j < 4; j++ )
          {
-            if( nodes[orders[Utilities::TFaceProcEdgeMask[direction][i][0]][j]] == nullptr )
+            int32_t nodeIndex = nodes[orders[Utilities::TFaceProcEdgeMask[direction][i][0]][j]];
+            if( nodeIndex == -1 )
                continue;
-            if( nodes[orders[Utilities::TFaceProcEdgeMask[direction][i][0]][j]]->type != NodeType::Internal )
-               edge_nodes[j] = nodes[orders[Utilities::TFaceProcEdgeMask[direction][i][0]][j]];
+            auto node = &nodeList[nodeIndex];
+
+            if( node->m_type != NodeType::Internal )
+               edge_nodes[j] = nodeIndex;
             else
-               edge_nodes[j] = nodes[orders[Utilities::TFaceProcEdgeMask[direction][i][0]][j]]->children[Utilities::TFaceProcEdgeMask[direction][i][1 + j]];
+               edge_nodes[j] = node->m_childIndex[Utilities::TFaceProcEdgeMask[direction][i][1 + j]];
          }
-         ClusterEdge( edge_nodes, Utilities::TFaceProcEdgeMask[direction][i][5], surface_index, collected_vertices );
+         ClusterEdge( edge_nodes, Utilities::TFaceProcEdgeMask[direction][i][5], surface_index, collected_vertices, nodeList );
       }
    }
 
-   void ClusterEdge( boost::shared_ptr< OctreeNodeMdc > nodes[4], int direction, int surface_index, std::vector < boost::shared_ptr< Vertex > >& collected_vertices )
+   void ClusterEdge( int32_t nodes[4], int direction, int& surface_index, std::vector < boost::shared_ptr< Vertex > >& collected_vertices, std::vector< OctreeNodeMdc >& nodeList )
    {
-      if( ( nodes[0] == nullptr ||
-            nodes[0]->type != NodeType::Internal ) &&
-            ( nodes[1] == nullptr ||
-              nodes[1]->type != NodeType::Internal ) &&
-              ( nodes[2] == nullptr ||
-                nodes[2]->type != NodeType::Internal ) &&
-                ( nodes[3] == nullptr ||
-                  nodes[3]->type != NodeType::Internal ) )
+      if( ( nodes[0] == -1 ||
+            nodeList[nodes[0]].m_type != NodeType::Internal ) &&
+            ( nodes[1] == -1 ||
+              nodeList[nodes[1]].m_type != NodeType::Internal ) &&
+              ( nodes[2] == -1 ||
+                nodeList[nodes[2]].m_type != NodeType::Internal ) &&
+                ( nodes[3] == -1 ||
+                  nodeList[nodes[3]].m_type != NodeType::Internal ) )
       {
-         ClusterIndexes( nodes, direction, surface_index, collected_vertices );
+         ClusterIndexes( nodes, direction, surface_index, collected_vertices, nodeList );
       }
       else
       {
          for( int i = 0; i < 2; i++ )
          {
-            boost::shared_ptr< OctreeNodeMdc > edge_nodes[4];
+            int32_t edge_nodes[4] = { -1, -1, -1, -1 };
 
             for( int j = 0; j < 4; j++ )
             {
-               if( nodes[j] == nullptr )
+               if( nodes[j] == -1 )
                   continue;
-               if( nodes[j]->type == NodeType::Leaf )
+
+               auto node = &nodeList[nodes[j]];
+               if( node->m_type == NodeType::Leaf )
                   edge_nodes[j] = nodes[j];
                else
-                  edge_nodes[j] = nodes[j]->children[Utilities::TEdgeProcEdgeMask[direction][i][j]];
+                  edge_nodes[j] = node->m_childIndex[Utilities::TEdgeProcEdgeMask[direction][i][j]];
             }
-            ClusterEdge( edge_nodes, Utilities::TEdgeProcEdgeMask[direction][i][4], surface_index, collected_vertices );
+            ClusterEdge( edge_nodes, Utilities::TEdgeProcEdgeMask[direction][i][4], surface_index, collected_vertices, nodeList );
          }
       }
    }
 
-   void ClusterIndexes( boost::shared_ptr< OctreeNodeMdc > nodes[4], int direction, int max_surface_index, std::vector < boost::shared_ptr< Vertex > >& collected_vertices )
+   void ClusterIndexes( int32_t nodes[4], int direction, int& max_surface_index, std::vector < boost::shared_ptr< Vertex > >& collected_vertices, std::vector<  OctreeNodeMdc >& nodeList )
    {
-      if( nodes[0] == nullptr &&
-          nodes[1] == nullptr &&
-          nodes[2] == nullptr &&
-          nodes[3] == nullptr )
+      if( nodes[0] == -1 &&
+          nodes[1] == -1 &&
+          nodes[2] == -1 &&
+          nodes[3] == -1 )
          return;
 
       boost::shared_ptr< Vertex > vertices[4];
@@ -875,7 +808,7 @@ public:
 
       for( int i = 0; i < 4; i++ )
       {
-         if( nodes[i] == nullptr )
+         if( nodes[i] == -1 )
             continue;
          node_count++;
 
@@ -883,15 +816,17 @@ public:
          int c1 = Utilities::TEdgePairs[edge][0];
          int c2 = Utilities::TEdgePairs[edge][1];
 
-         int m1 = ( nodes[i]->corners >> c1 ) & 1;
-         int m2 = ( nodes[i]->corners >> c2 ) & 1;
+         auto node = &nodeList[nodes[i]];
+
+         int m1 = ( node->m_corners >> c1 ) & 1;
+         int m2 = ( node->m_corners >> c2 ) & 1;
 
          //find the vertex index
          int index = 0;
          bool skip = false;
          for( int k = 0; k < 16; k++ )
          {
-            int e = Utilities::TransformedEdgesTable[nodes[i]->corners][k];
+            int e = Utilities::TransformedEdgesTable[node->m_corners][k];
             if( e == -1 )
             {
                index++;
@@ -907,9 +842,9 @@ public:
                break;
          }
 
-         if( !skip && index < nodes[i]->m_vertices.size() )
+         if( !skip && index < node->m_vertices.size() )
          {
-            vertices[i] = nodes[i]->m_vertices[index];
+            vertices[i] = node->m_vertices[index];
             while( vertices[i]->m_pParent != nullptr )
                vertices[i] = vertices[i]->m_pParent;
             v_count++;
@@ -926,14 +861,15 @@ public:
 
          if( vertices[i] == nullptr )
             continue;
-         if( vertices[i]->surface_index != -1 )
+
+         if( vertices[i]->m_surface_index != -1 )
          {
-            if( surface_index != -1 && surface_index != vertices[i]->surface_index )
+            if( surface_index != -1 && surface_index != vertices[i]->m_surface_index )
             {
-               AssignSurface( collected_vertices, vertices[i]->surface_index, surface_index );
+               AssignSurface( collected_vertices, vertices[i]->m_surface_index, surface_index );
             }
             else if( surface_index == -1 )
-               surface_index = vertices[i]->surface_index;
+               surface_index = vertices[i]->m_surface_index;
          }
       }
 
@@ -946,11 +882,11 @@ public:
          if( vertices[i] == nullptr )
             continue;
 
-         if( vertices[i]->surface_index == -1 )
+         if( vertices[i]->m_surface_index == -1 )
          {
             collected_vertices.push_back( vertices[i] );
          }
-         vertices[i]->surface_index = surface_index;
+         vertices[i]->m_surface_index = surface_index;
       }
    }
 
@@ -958,8 +894,8 @@ public:
    {
       for( auto v : vertices )
       {
-         if( v != nullptr && v->surface_index == from )
-            v->surface_index = to;
+         if( v != nullptr && v->m_surface_index == from )
+            v->m_surface_index = to;
       }
    }
 };

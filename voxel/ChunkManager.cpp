@@ -74,15 +74,15 @@ ChunkManager::ChunkManager( Frustum& camera )
 
    m_scene_next = createScene( rootBounds );
 
-   OctreeNodeMdc tree;
-   std::vector<Vertex> vertices;
+   //OctreeNodeMdc tree;
+   //std::vector<Vertex> vertices;
 
-   tree.ConstructBase( 64, 0.1f, vertices );
-   tree.ClusterCellBase( 0.1f );
+   //tree.ConstructBase( 64, 0.1f, vertices );
+   //tree.ClusterCellBase( 0.1f );
 
-   
-   tree.GenerateVertexBuffer( m_mdcVertices );
-   tree.position = float3( 0, 0, 0 );
+   //
+   //tree.GenerateVertexBuffer( m_mdcVertices );
+   //tree.position = float3( 0, 0, 0 );
 
 }
 
@@ -496,7 +496,7 @@ void ChunkManager::updateLoDTree2( Frustum& camera )
 {
 
    /// get the next chunk off the queue that needs its mesh created / uploaded
-   for( std::size_t i = 0; i < 8; ++i )
+   for( std::size_t i = 0; i < 4; ++i )
    {
       auto chunk = m_nodeChunkMeshGeneratorQueue.pop();
       if( !chunk )
@@ -511,8 +511,6 @@ void ChunkManager::updateLoDTree2( Frustum& camera )
       {
          chunk->createMesh();
       }
-      //std::cout << m_chunks_pending << "\n";
-      //m_chunks_pending--;
    }
 
 
@@ -823,7 +821,7 @@ void ChunkManager::chunkContourThread()
 
       did_some_work = false;
 
-      std::size_t max_chunks_per_frame = 25;
+      std::size_t max_chunks_per_frame = 12;
 
       for( std::size_t i = 0; i < max_chunks_per_frame; ++i )
       {
@@ -837,8 +835,10 @@ void ChunkManager::chunkContourThread()
 
          assert( chunk->m_zeroCrossCompact != 0 );
          auto t11 = Clock::now();
-         chunk->buildTree( ChunkManager::CHUNK_SIZE, 1.02f );
-         chunk->createVertices();
+        // chunk->buildTree( ChunkManager::CHUNK_SIZE, -1.02f );
+        // chunk->createVertices();
+
+         chunk->generate( -1.0f );
 
          if( chunk->m_pOctreeNodes )
          {

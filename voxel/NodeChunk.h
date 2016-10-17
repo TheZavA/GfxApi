@@ -13,6 +13,8 @@
 #include "TOctree.h"
 #include "common.h"
 
+#include "octreemdc.h"
+
 #include <unordered_map>
 #include <atomic>
 
@@ -35,6 +37,8 @@ public:
 
    uint32_t m_octree_root_index;
 
+   boost::shared_ptr < TVolume3d<cell_t*> > m_pCellBuffer;
+
    boost::shared_ptr< std::vector< cl_int4_t > > m_compactCorners;
    boost::shared_ptr< std::vector< edge_t > > m_edgesCompact;
    boost::shared_ptr< std::vector< cell_t > > m_zeroCrossCompact;
@@ -45,6 +49,10 @@ public:
    boost::shared_ptr< IndexBuffer > m_pIndices;
    boost::shared_ptr< VertexBuffer > m_pVertices;
    boost::shared_ptr< GfxApi::Mesh > m_pMesh;
+
+   std::vector<Vertex> m_vertices;
+   std::vector<int> m_indices;
+   std::vector<int> m_tri_count;
 
    boost::shared_ptr< TOctree< boost::shared_ptr< NodeChunk > > > m_pTree;
 
@@ -59,7 +67,13 @@ public:
 
    std::vector<uint32_t> createLeafNodes();
 
+   void ConstructBase( OctreeNodeMdc * pNode, int size, std::vector< OctreeNodeMdc >& nodeList );
+   bool ConstructNodes( OctreeNodeMdc * pNode, int& n_index, std::vector<  OctreeNodeMdc >& nodeList );
+   bool ConstructLeaf( OctreeNodeMdc * pNode, int& index );
+
    void buildTree( const int size, const float threshold );
+
+   void generate( float threshold );
 
    void createVertices();
    void createMesh();
@@ -72,6 +86,8 @@ public:
    void generateFullEdges();
 
    boost::shared_ptr< GfxApi::Mesh > getMeshPtr();
+
+   std::vector<VertexPositionNormal> m_mdcVertices;
 
 };
 

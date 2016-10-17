@@ -69,7 +69,8 @@ void NodeChunk::generateFullEdges()
 
    typedef boost::chrono::high_resolution_clock Clock;
 
-   memset( m_pChunkManager->m_pCellBuffer->getDataPtr(), 0, m_pChunkManager->m_pCellBuffer->m_xyzSize * 4 );
+   m_pCellBuffer = boost::make_shared<TVolume3d<cell_t*>>( ChunkManager::CHUNK_SIZE + 4, ChunkManager::CHUNK_SIZE + 4, ChunkManager::CHUNK_SIZE + 4 );
+   memset( m_pCellBuffer->getDataPtr(), 0, m_pCellBuffer->m_xyzSize * 4 );
 
    auto zeroCrossCompact = boost::make_shared<std::vector<cell_t>>();
    zeroCrossCompact->reserve( m_edgesCompact->size() );
@@ -77,7 +78,7 @@ void NodeChunk::generateFullEdges()
    auto compactCorners = boost::make_shared<std::vector<cl_int4_t>>();
    compactCorners->reserve( m_edgesCompact->size() );
 
-   auto& cellBuffer = ( *m_pChunkManager->m_pCellBuffer );
+   auto& cellBuffer = ( *m_pCellBuffer );
 
    for( auto &edge : *m_edgesCompact )
    {
@@ -89,6 +90,8 @@ void NodeChunk::generateFullEdges()
          int x1 = edge.grid_pos[0] + edgeDuplicateMask[edge_index][y][0];
          int y1 = edge.grid_pos[1] + edgeDuplicateMask[edge_index][y][1];
          int z1 = edge.grid_pos[2] + edgeDuplicateMask[edge_index][y][2];
+
+         int target_index = edgeDuplicateIndex[edge_index][y];
 
          if( x1 < 0 || y1 < 0 || z1 < 0 ||
              x1 > ChunkManager::CHUNK_SIZE + 1 ||
@@ -118,15 +121,15 @@ void NodeChunk::generateFullEdges()
 
          cell_t* zero1 = cell;
 
-         zero1->positions[zero1->edgeCount][0] = edge.zero_crossing.x;
-         zero1->positions[zero1->edgeCount][1] = edge.zero_crossing.y;
-         zero1->positions[zero1->edgeCount][2] = edge.zero_crossing.z;
+         zero1->positions[target_index][0] = edge.zero_crossing.x;
+         zero1->positions[target_index][1] = edge.zero_crossing.y;
+         zero1->positions[target_index][2] = edge.zero_crossing.z;
 
-         zero1->normals[zero1->edgeCount][0] = edge.normal.x;
-         zero1->normals[zero1->edgeCount][1] = edge.normal.y;
-         zero1->normals[zero1->edgeCount][2] = edge.normal.z;
+         zero1->normals[target_index][0] = edge.normal.x;
+         zero1->normals[target_index][1] = edge.normal.y;
+         zero1->normals[target_index][2] = edge.normal.z;
 
-         zero1->materials[zero1->edgeCount] = edge.material;
+         zero1->materials[target_index] = edge.material;
 
          zero1->xPos = x1;
          zero1->yPos = y1;
@@ -148,6 +151,14 @@ void NodeChunk::generateFullEdges()
       m_pChunkManager->m_ocl->getCompactCorners( &( *compactCorners )[0], ( *compactCorners ).size() );
 
       m_compactCorners = compactCorners;
+
+      auto& corners = ( *m_compactCorners );
+      int off = 0;
+      for( auto& zero : *m_zeroCrossCompact )
+      {
+         cl_int4_t& corner = corners[off++];
+         zero.corners = corner.w;
+      }
    }
    else
    {
@@ -166,7 +177,7 @@ boost::shared_ptr<GfxApi::Mesh> NodeChunk::getMeshPtr()
 void NodeChunk::createMesh()
 {
 
-   if( !m_pVertices || !m_pIndices )
+   if( m_mdcVertices.size() < 1 || m_indices.size() < 1 )
    {
       return;
    }
@@ -181,39 +192,39 @@ void NodeChunk::createMesh()
    mesh->Bind();
 
    boost::shared_ptr<GfxApi::VertexBuffer> pVertexBuffer =
-      boost::make_shared<GfxApi::VertexBuffer>( m_pVertices->size(), decl, GfxApi::Usage::STATIC_DRAW );
+      boost::make_shared<GfxApi::VertexBuffer>( m_mdcVertices.size(), decl, GfxApi::Usage::STATIC_DRAW );
 
    boost::shared_ptr<GfxApi::IndexBuffer> pIndexBuffer =
-      boost::make_shared<GfxApi::IndexBuffer>( mesh, m_pIndices->size(), GfxApi::PrimitiveIndexType::Indices32Bit, GfxApi::Usage::STATIC_DRAW );
+      boost::make_shared<GfxApi::IndexBuffer>( mesh, m_indices.size(), GfxApi::PrimitiveIndexType::Indices32Bit, GfxApi::Usage::STATIC_DRAW );
 
    float * vbPtr = reinterpret_cast< float* >( pVertexBuffer->CpuPtr() );
    unsigned int * ibPtr = reinterpret_cast< unsigned int* >( pIndexBuffer->CpuPtr() );
 
    uint32_t offset = 0;
 
-   for( auto& vertexInf : *m_pVertices )
+   for( auto& vertexInf : m_mdcVertices )
    {
-      vbPtr[offset + 0] = vertexInf.m_xyz.x;
-      vbPtr[offset + 1] = vertexInf.m_xyz.y;
-      vbPtr[offset + 2] = vertexInf.m_xyz.z;
-      vbPtr[offset + 3] = vertexInf.m_normal.x;
-      vbPtr[offset + 4] = vertexInf.m_normal.y;
-      vbPtr[offset + 5] = vertexInf.m_normal.z;
-      *( int* ) ( &vbPtr[offset + 6] ) = vertexInf.m_material;
+      vbPtr[offset + 0] = vertexInf.position.x;
+      vbPtr[offset + 1] = vertexInf.position.y;
+      vbPtr[offset + 2] = vertexInf.position.z;
+      vbPtr[offset + 3] = vertexInf.normal.x;
+      vbPtr[offset + 4] = vertexInf.normal.y;
+      vbPtr[offset + 5] = vertexInf.normal.z;
+      *( int* ) ( &vbPtr[offset + 6] ) = 1;
       *( int* ) ( &vbPtr[offset + 7] ) = 0;
       offset += 8;
 
-      if( vertexInf.m_material == 0 )
+    /*  if( vertexInf.m_material == 0 )
       {
          continue;
-      }
+      }*/
    }
 
    pVertexBuffer->Bind();
    pVertexBuffer->UpdateToGpu();
    offset = 0;
-
-   for( auto& idx : *m_pIndices )
+   
+   for( auto& idx : m_indices )
    {
       ibPtr[offset++] = idx;
    }
@@ -231,6 +242,8 @@ void NodeChunk::createMesh()
 
    m_pMesh = mesh;
 
+   m_mdcVertices.clear();
+   m_indices.clear();
    m_pVertices.reset();
    m_pIndices.reset();
    m_zeroCrossCompact.reset();
@@ -438,7 +451,7 @@ void NodeChunk::buildTree( const int size, const float threshold )
 
    auto leafs = createLeafNodes();
 
-   m_octree_root_index = createOctree( leafs, *m_pOctreeNodes, threshold, false, m_nodeIdxCurr );
+   m_octree_root_index = createOctree( leafs, *m_pOctreeNodes, threshold, true, m_nodeIdxCurr );
 
    m_edgesCompact.reset();
 }
@@ -470,3 +483,289 @@ void NodeChunk::createVertices()
    m_pIndices = pIndices;
 }
 
+void NodeChunk::generate( float threshold )
+{
+
+   std::vector< OctreeNodeMdc > octreeNodes( 280000 );
+
+   ConstructBase( &octreeNodes[0], ChunkManager::CHUNK_SIZE, octreeNodes );
+
+
+   //if( !m_bHasNodes )
+   //{
+
+   //   this->m_samples.reset();
+   //   this->m_indices.clear();
+   //   this->m_vertices.clear();
+   //   this->m_mdcVertices.clear();
+   //   this->m_pVertices.reset();
+   //   this->m_pIndices.reset();
+   //   this->m_tri_count.clear();
+
+
+   //   return;
+   //}
+
+   ( &octreeNodes[0] )->ClusterCellBase( threshold, octreeNodes );
+
+   ( &octreeNodes[0] )->GenerateVertexBuffer( m_mdcVertices, octreeNodes );
+
+   ( &octreeNodes[0] )->ProcessCell( m_indices, m_tri_count, threshold, octreeNodes );
+
+   m_pCellBuffer.reset();
+
+}
+
+void NodeChunk::ConstructBase( OctreeNodeMdc * pNode, int size, std::vector< OctreeNodeMdc >& nodeList )
+{
+   pNode->m_index = 0;
+   pNode->m_size = size;
+   pNode->m_type = NodeType::Internal;
+   pNode->m_child_index = 0;
+   int n_index = 1;
+   if( !ConstructNodes( pNode, n_index, nodeList ) )
+   {
+      m_bHasNodes = false;
+   }
+}
+
+bool NodeChunk::ConstructNodes( OctreeNodeMdc * pNode, int& n_index, std::vector< OctreeNodeMdc >& nodeList )
+{
+   if( pNode->m_size == 1 )
+   {
+      return ConstructLeaf( pNode, n_index );
+   }
+
+   pNode->m_type = NodeType::Internal;
+   int child_size = pNode->m_size / 2;
+
+   bool has_children = false;
+
+   float3 gridPos( pNode->m_gridX, pNode->m_gridY, pNode->m_gridZ );
+   for( int i = 0; i < 8; i++ )
+   {
+      pNode->m_index = n_index++;
+      float3 child_pos = gridPos +
+         float3( Utilities::TCornerDeltas[i][0],
+                 Utilities::TCornerDeltas[i][1],
+                 Utilities::TCornerDeltas[i][2] ) * ( float ) child_size;
+
+      auto node = &nodeList[m_nodeIdxCurr++];
+      node->m_size = child_size;
+      node->m_type = NodeType::Internal;
+      //auto newNode = OctreeNodeMdc( child_pos, child_size, NodeType::Internal );
+
+      node->m_gridX = static_cast< int32_t >( child_pos.x );
+      node->m_gridY = static_cast< int32_t >( child_pos.y );
+      node->m_gridZ = static_cast< int32_t >( child_pos.z );
+
+      node->m_child_index = i;
+      int childIndex = m_nodeIdxCurr - 1;
+      //nodeList.push_back( newNode );
+      pNode->m_childIndex[i] = childIndex;
+
+      int index = i;
+      if( ConstructNodes( node, n_index, nodeList ) )
+         has_children = true;
+      else
+      {
+         pNode->m_childIndex[i] = -1;
+      }
+
+   }
+
+   return has_children;
+}
+
+float sphereFunction( float x, float y, float z )
+{
+   //y = atan(y);
+   //return ( x*x  + y*y + z*z ) - 100000.0f;
+   return ( x*x + y*y + z*z ) - 10000000.0f;
+   //return sin( x * x + y * y + z*z ) *1000;
+
+}
+
+float3 findCrossingPoint( int quality, float3 pt0, float3 pt1 )
+{
+   float isoValue = 0.0f;
+
+   float3 p0 = pt0;
+   float v0 = sphereFunction( pt0.x, pt0.y, pt0.z );
+   float3 p1 = pt1;
+   float v1 = sphereFunction( pt1.x, pt1.y, pt1.z );
+
+   float alpha = ( 0 - v0 ) / ( v1 - v0 );
+
+   // Interpolate
+   float3 pos;
+   pos.x = p0.x + alpha * ( p1.x - p0.x );
+   pos.y = p0.y + alpha * ( p1.y - p0.y );
+   pos.z = p0.z + alpha * ( p1.z - p0.z );
+
+
+   // Re-Sample
+   float val = sphereFunction( pos.x, pos.y, pos.z );
+
+   // Return if good enough
+   if( ( fabs( isoValue - val ) < 0.000001f ) || ( quality == 0 ) )
+   {
+      return pos;
+   }
+   else
+   {
+      if( val < 0.f )
+      {
+         if( v0 > 0.f )
+            pos = findCrossingPoint( quality - 1, pos, pt0 );
+         else if( v1 > 0.f )
+            pos = findCrossingPoint( quality - 1, pos, pt1 );
+      }
+      else if( val > 0.f )
+      {
+         if( v0 < 0.f )
+            pos = findCrossingPoint( quality - 1, pt0, pos );
+         else if( v1 < 0.f )
+            pos = findCrossingPoint( quality - 1, pt1, pos );
+      }
+   }
+
+   return pos;
+}
+
+float3 getNormal( float3 intersection )
+{
+   float H = 0.1f;
+   float3 xyz1 = float3( intersection.x + H, intersection.y + 0.f, intersection.z + 0.f );
+   float3 xyz1_1 = float3( intersection.x - H, intersection.y - 0.f, intersection.z - 0.f );
+
+   float3 xyz2 = intersection + float3( 0.0f, H, 0.f );
+   float3 xyz2_1 = intersection - float3( 0.0f, H, 0.f );
+
+   float3 xyz3 = intersection + float3( 0.0f, 0.0f, H );
+   float3 xyz3_1 = intersection - float3( 0.0f, 0.0f, H );
+
+   const float dx = sphereFunction( xyz1.x, xyz1.y, xyz1.z ) - sphereFunction( xyz1_1.x, xyz1_1.y, xyz1_1.z );
+
+   const float dy = sphereFunction( xyz2.x, xyz2.y, xyz2.z ) - sphereFunction( xyz2_1.x, xyz2_1.y, xyz2_1.z );
+
+   const float dz = sphereFunction( xyz3.x, xyz3.y, xyz3.z ) - sphereFunction( xyz3_1.x, xyz3_1.y, xyz3_1.z );
+
+   return float3( dx, dy, dz ).Normalized();
+}
+
+bool NodeChunk::ConstructLeaf( OctreeNodeMdc * pNode, int& index )
+{
+   if( pNode->m_size != 1 )
+      return false;
+
+   pNode->m_index = index++;
+   pNode->m_type = NodeType::Leaf;
+   float samples[8];
+   
+   auto& cellBuffer = ( *m_pCellBuffer );
+   cell_t* cell = cellBuffer( pNode->m_gridX, pNode->m_gridY, pNode->m_gridZ );
+   //const auto& samples1 = *m_samples;
+   //for( int i = 0; i < 8; i++ )
+   //{
+   //   if( samples1( pNode->m_gridX + Utilities::TCornerDeltas[i][0],
+   //                 pNode->m_gridY + Utilities::TCornerDeltas[i][1],
+   //                 pNode->m_gridZ + Utilities::TCornerDeltas[i][2] ) < 0 )
+   //      pNode->m_corners |= 1 << i;
+   //}
+
+   if( cell == nullptr )
+   {
+      //m_bHasNodes = false;
+      return false;
+   }
+
+   if( cell->corners == 0 ||
+       cell->corners == 255 )
+   {
+      return false;
+   }
+
+   pNode->m_corners = cell->corners;
+
+   m_bHasNodes = true;
+
+   int8_t v_edges[4][12]; //the edges corresponding to each vertex
+
+
+
+   int v_index = 0;
+   int e_index = 0;
+
+   for( int e = 0; e < 16; e++ )
+   {
+      int code = Utilities::TransformedEdgesTable[cell->corners][e];
+      if( code == -2 )
+      {
+         v_edges[v_index++][e_index] = -1;
+         break;
+      }
+      if( code == -1 )
+      {
+         v_edges[v_index++][e_index] = -1;
+         e_index = 0;
+         continue;
+      }
+
+      v_edges[v_index][e_index++] = code;
+   }
+
+
+   pNode->m_vertices.reserve( v_index );
+
+   for( int i = 0; i < v_index; i++ )
+   {
+      int k = 0;
+      auto pVertex = boost::make_shared<Vertex>();
+      //pVertex->m_qef.reset();
+      float3 normal = float3::zero;
+      int ei[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+      while( v_edges[i][k] != -1 )
+      {
+         ei[v_edges[i][k]] = 1;
+
+         float3 no = float3( cell->normals[v_edges[i][k]][0],
+                             cell->normals[v_edges[i][k]][1],
+                             cell->normals[v_edges[i][k]][2] );
+         //float3 a = basePos +
+         //   float3( m_scale * Utilities::TCornerDeltas[Utilities::TEdgePairs[v_edges[i][k]][0]][0],
+         //           m_scale * Utilities::TCornerDeltas[Utilities::TEdgePairs[v_edges[i][k]][0]][1],
+         //           m_scale * Utilities::TCornerDeltas[Utilities::TEdgePairs[v_edges[i][k]][0]][2] );
+
+         //float3 b = basePos +
+         //   float3( m_scale * Utilities::TCornerDeltas[Utilities::TEdgePairs[v_edges[i][k]][1]][0],
+         //           m_scale * Utilities::TCornerDeltas[Utilities::TEdgePairs[v_edges[i][k]][1]][1],
+         //           m_scale * Utilities::TCornerDeltas[Utilities::TEdgePairs[v_edges[i][k]][1]][2] );
+
+         //// right, for now just take the avg
+         //float3 intersection = findCrossingPoint( 6, a, b );
+         //float3 n = getNormal( intersection );
+         normal += no;
+         pVertex->m_qef.add( cell->positions[v_edges[i][k]][0], cell->positions[v_edges[i][k]][1], cell->positions[v_edges[i][k]][2],
+                             no.x, no.y, no.z );
+         k++;
+      }
+
+      normal /= ( float ) k;
+      normal.Normalize();
+      pVertex->m_index = -1;
+      pVertex->m_error = 0;
+      pVertex->m_pParent = nullptr;
+      pVertex->m_collapsible = true;
+      pVertex->m_normal = normal;
+      pVertex->m_euler = 1;
+      memcpy( pVertex->m_eis, ei, 12 * 4 );
+      pVertex->m_in_cell = pNode->m_child_index;
+      pVertex->m_face_prop2 = true;
+      pNode->m_vertices.push_back( pVertex );
+
+
+   }
+
+   return true;
+}

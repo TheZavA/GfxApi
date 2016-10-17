@@ -9,13 +9,13 @@
 
 struct cell_t
 {
-    float positions[12][3];
-    float normals[12][3];
+   float positions[12][3];
+   float normals[12][3];
 	uint8_t materials[12];
 	uint8_t xPos;
 	uint8_t yPos;
 	uint8_t zPos;
-    uint8_t edgeCount;
+   uint8_t edgeCount;
 	uint8_t corners;
 	uint16_t padding;
 };

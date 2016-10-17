@@ -1567,11 +1567,11 @@ namespace GfxApi {
 			throw std::runtime_error("cannot start with a vertex offset greater than the number of vertices");
 		}
 
-		if (!ib)
+	/*	if (!ib)
 		{
 			if (m_numRenderableVertices % 3 != 0)
 				throw std::runtime_error("empty index buffer, but vbo has a non-divisible-by-3 length");
-		}
+		}*/
 	}
 
 	void Mesh::CheckValid() const

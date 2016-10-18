@@ -41,9 +41,13 @@ const int edgeDuplicateMask[3][4][3] = {
 };
 
 const int edgeDuplicateIndex[3][4] = {
+ /*  { 0, 1, 2, 3 },
+   { 4, 5, 6, 7 },
+   { 8, 9, 10, 11 }*/
+
    { 0, 1, 2, 3 },
    { 4, 5, 6, 7 },
-   { 8, 9, 10, 11 }
+   { 8, 9, 10, 11}
 };
 
 const int faceProcEdgeMask[3][4][6] = {
@@ -168,18 +172,6 @@ void CellProc( int32_t node_index, IndexBuffer& indexBuffer, std::vector<OctreeN
 uint32_t createOctree( std::vector<uint32_t>& leaf_indices, std::vector<OctreeNode>& node_list, const float threshold, bool simplify, int32_t& node_counter );
 uint32_t simplifyOctree( uint32_t node_index, std::vector<OctreeNode>& node_list, float threshold );
 
-
-// intersection free test -----------------------------------------------------
-void cellProcContourNoInter2( int32_t node_index, int st[3], int len, HashMap* hash, VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, std::vector<OctreeNode>& node_list );
-void faceProcContourNoInter2( int32_t node_index[2], int st[3], int len, int dir, HashMap* hash, VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, std::vector<OctreeNode>& node_list );
-void edgeProcContourNoInter2( int32_t node_index[4], int st[3], int len, int dir, HashMap* hash, VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, std::vector<OctreeNode>& node_list );
-
-void processEdgeNoInter2( int32_t node_index[4], int st[3], int len, int dir, HashMap* hash, VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, std::vector<OctreeNode>& node_list );
-
-int testFace( int st[3], int len, int dir, float v1[3], float v2[3] );
-int testEdge( int st[3], int len, int dir, int32_t node_index[4], float v[4][3], std::vector<OctreeNode>& node_list );
-void makeEdgeVertex( int st[3], int len, int dir, float mp[4][3], float v[3] );
-// ----------------------------------------------------------------------------
 
 #endif	// HAS_OCTREE_H_BEEN_INCLUDED
 

@@ -5,17 +5,12 @@
 
 #define USE_IMAGES_FOR_RESULTS (0)  // NOTE: It may be faster to use buffers instead of images
 
-static __constant float4 ZERO_F4 = (float4)(0.0f, 0.0f, 0.0f, 0.0f);
-static __constant float4 ONE_F4 = (float4)(1.0f, 1.0f, 1.0f, 1.0f);
-
- 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static __constant int3 CHILD_MIN_OFFSETS[8] =
 {
 	// needs to match the vertMap from Dual Contouring impl
-	(int3)( 0, 0, 0 ), 
+	 (int3)( 0, 0, 0 ), 
     (int3)( 0, 0, 1 ), 
     (int3)( 0, 1, 0 ), 
     (int3)( 0, 1, 1 ), 
@@ -28,18 +23,10 @@ static __constant int3 CHILD_MIN_OFFSETS[8] =
 static __constant int3 CORNER_OFFSETS[3] =
 {
 	// needs to match the vertMap from Dual Contouring impl
-	(int3)( 1, 0, 0 ), 
+	 (int3)( 1, 0, 0 ), 
     (int3)( 0, 1, 0 ), 
     (int3)( 0, 0, 1 )
 };
-
-static __constant int edgevmap[12][2] = 
-{
-	{0,4},{1,5},{2,6},{3,7},	// x-axis 
-	{0,2},{1,3},{4,6},{5,7},	// y-axis
-	{0,1},{2,3},{4,5},{6,7}		// z-axis
-};
-
 
 __constant int P_MASK = 255;
 
@@ -1330,8 +1317,8 @@ float sphereFunction(float4 pos)
 float densities3d(float3 pos, uchar level)
 {
     
-   //return pos.y < 1000 ? -1 : 0;
-   return sphereFunction((float4)(pos.x, pos.y, pos.z, 0.0f)) - 200000335.f ;
+   //return pos.y < 400 ? -1 : 1;
+   //return sphereFunction((float4)(pos.x, pos.y, pos.z, 0.0f)) - 200000335.f ;
    float3 mod_pos = pos * 0.001f;
    //level = 14;
 	     

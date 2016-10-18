@@ -83,15 +83,6 @@
     <ClInclude Include="voxel\TQueueLocked.h">
       <Filter>voxel</Filter>
     </ClInclude>
-    <ClInclude Include="voxel\HashMap.h">
-      <Filter>voxel</Filter>
-    </ClInclude>
-    <ClInclude Include="voxel\intersection.h">
-      <Filter>voxel</Filter>
-    </ClInclude>
-    <ClInclude Include="voxel\AABBTree.h">
-      <Filter>voxel</Filter>
-    </ClInclude>
     <ClInclude Include="glcommon.h">
       <Filter>GfxApi</Filter>
     </ClInclude>
@@ -150,8 +141,5 @@
   </ItemGroup>
   <ItemGroup>
     <Library Include="..\OpenGI\lib\OpenGI.lib" />
-    <Library Include="..\lib\assimp-3.1.1\lib\Release\assimp.lib">
-      <Filter>voxel</Filter>
-    </Library>
   </ItemGroup>
 </Project>

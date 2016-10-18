@@ -14,6 +14,7 @@ struct cell_t
       xPos = 0;
       yPos = 0;
       zPos = 0;
+      corners = 0;
    }
    float positions[12][3];
    float normals[12][3];

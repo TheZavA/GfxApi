@@ -51,13 +51,15 @@ public:
    Vertex()
    {
       m_qef.reset();
+      memset( m_eis, 0, 4 * 12 );
       m_pParent = nullptr;
       m_index = -1;
+      m_euler = 0;
       m_collapsible = true;
       m_position = float3::zero;
       m_normal = float3::zero;
       m_surface_index = -1;
-      //m_eis = { 0 };
+      m_in_cell = 0;
       m_error = 0;
    }
 };

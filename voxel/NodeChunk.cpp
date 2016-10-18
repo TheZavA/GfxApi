@@ -3,26 +3,13 @@
 #include "ChunkManager.h"
 #include "../ocl.h"
 #include "../MainClass.h"
-#include <GI/gi.h>
+
 #include "../cubelib/cube.hpp"
 #include "octree.h"
-
-#include "AABBTree.h"
-#include <GI/gi.h>
 
 
 const float QEF_ERROR = 1e-1f;
 const int QEF_SWEEPS = 4;
-
-int toIntIdx( uint8_t x, uint8_t y, uint8_t z )
-{
-   int index = 0;
-   ( ( char* ) ( &index ) )[0] = x;
-   ( ( char* ) ( &index ) )[1] = y;
-   ( ( char* ) ( &index ) )[2] = z;
-   return index;
-}
-
 
 NodeChunk::NodeChunk( float scale, const AABB& bounds, ChunkManager* pChunkManager, bool hasNodes )
    : m_scale( scale )
@@ -109,7 +96,7 @@ void NodeChunk::generateFullEdges()
          {
             zeroCrossCompact->emplace_back();
             cell = &zeroCrossCompact->back();
-            //memset( cell, 0, sizeof( cell_t ) );
+            memset( cell, 0, sizeof( cell_t ) );
             //cell->edgeCount = 0;
             cell->corners = 0;
             cellBuffer( x1, y1, z1 ) = cell;
@@ -142,7 +129,6 @@ void NodeChunk::generateFullEdges()
             zero1 = zero1;
          }
 
-         //zero1->edgeCount++;
       }
 
    }
@@ -183,13 +169,9 @@ boost::shared_ptr<GfxApi::Mesh> NodeChunk::getMeshPtr()
 
 void NodeChunk::createMesh()
 {
-
    if( m_mdcVertices.size() < 1 || m_indices.size() < 1 )
-   {
       return;
-   }
-
-
+   
    GfxApi::VertexDeclaration decl;
    decl.Add( GfxApi::VertexElement( GfxApi::VertexDataSemantic::VCOORD, GfxApi::VertexDataType::FLOAT, 3, "vertex_position" ) );
    decl.Add( GfxApi::VertexElement( GfxApi::VertexDataSemantic::NORMAL, GfxApi::VertexDataType::FLOAT, 3, "vertex_normal" ) );
@@ -256,17 +238,11 @@ void NodeChunk::createMesh()
    m_zeroCrossCompact.reset();
    m_pOctreeNodes.reset();
 
-
 }
 
 
 void NodeChunk::classifyEdges()
 {
-
-
-   //typedef boost::chrono::high_resolution_clock Clock;
-  // auto t1 = Clock::now();
-
    std::vector<cl_edge_info_t> compactedEdges;
    m_pChunkManager->m_ocl->classifyEdges( ChunkManager::CHUNK_SIZE + 4, compactedEdges );
 
@@ -308,24 +284,19 @@ void NodeChunk::classifyEdges()
       }
    }
 
-  // m_bHasNodes = false;
+   m_bHasNodes = false;
 
    if( edges_compact->size() > 0 )
    {
       m_bHasNodes = true;
       m_edgesCompact = edges_compact;
-      //  auto t2 = Clock::now();
-      //  std::cout << "..." << (t2 - t1) << "\n";
    }
-
-
 
 }
 
 
 void NodeChunk::generateZeroCross()
 {
-
    int tree_level = m_pTree->getLevel();
    m_pChunkManager->m_ocl->generateZeroCrossing( *m_edgesCompact,
                                                  m_chunk_bounds.minPoint.x,
@@ -333,178 +304,15 @@ void NodeChunk::generateZeroCross()
                                                  m_chunk_bounds.minPoint.z,
                                                  m_scale,
                                                  tree_level );
-
 }
 
-int findPopular( uint8_t* a, int length )
-{
-
-   uint8_t result[10];
-   int highestIndex = 0;
-   int highestCount = 0;
-   memset( result, 0, 10 * sizeof( uint8_t ) );
-   for( int i = 0; i < length; i++ )
-   {
-      result[a[i]]++;
-      if( result[a[i]] > highestCount && result[a[i]] != 0 )
-      {
-         highestCount = result[a[i]];
-         highestIndex = a[i];
-      }
-
-   }
-
-   return highestIndex;
-}
-
-std::vector<uint32_t> NodeChunk::createLeafNodes()
-{
-   std::vector<uint32_t> leaf_indices;
-
-   m_pOctreeNodes = boost::make_shared<std::vector<OctreeNode>>( m_edgesCompact->size() );
-
-   auto& corners = ( *m_compactCorners );
-   auto& nodes = ( *m_pOctreeNodes );
-   int off = 0;
-   for( auto& zero : *m_zeroCrossCompact )
-   {
-
-      cell_t& zeroCl = zero;
-      cl_int4_t& corner = corners[off++];
-
-      float3 averageNormal = float3( 0, 0, 0 );
-      float3 position;
-
-      QefSolver qef;
-   /*   for( int i = 0; i < zeroCl.edgeCount; i++ )
-      {
-         qef.add( zeroCl.positions[i][0], zeroCl.positions[i][1], zeroCl.positions[i][2],
-                  zeroCl.normals[i][0], zeroCl.normals[i][1], zeroCl.normals[i][2] );
-      }*/
-
-      Vec3 qefPosition;
-      qef.solve( qefPosition, QEF_ERROR, 4, QEF_ERROR );
-
-      position.x = qefPosition.x;
-      position.y = qefPosition.y;
-      position.z = qefPosition.z;
-
-      if( position.x < zeroCl.xPos || position.x > float( zeroCl.xPos + 1.0f ) ||
-          position.y < zeroCl.yPos || position.y > float( zeroCl.yPos + 1.0f ) ||
-          position.z < zeroCl.zPos || position.z > float( zeroCl.zPos + 1.0f ) )
-      {
-         position.x = qef.getMassPoint().x;
-         position.y = qef.getMassPoint().y;
-         position.z = qef.getMassPoint().z;
-      }
-
-    /*  for( int i = 0; i < zeroCl.edgeCount; i++ )
-      {
-         averageNormal += float3( zeroCl.normals[i][0], zeroCl.normals[i][1], zeroCl.normals[i][2] );
-      }*/
-
-      averageNormal = averageNormal.Normalized();
-
-      OctreeNode *leaf;
-      uint32_t count = m_nodeIdxCurr;
-      if( m_nodeIdxCurr >= nodes.size() )
-      {
-         nodes.emplace_back();
-      }
-      leaf = &nodes[m_nodeIdxCurr++];
-      leaf->size = 1;
-      leaf->minx = zeroCl.xPos;
-      leaf->miny = zeroCl.yPos;
-      leaf->minz = zeroCl.zPos;
-      leaf->type = Node_Leaf;
-
-      //int testMat = findPopular( zeroCl.materials, zeroCl.edgeCount );
-
-      //leaf->material = testMat;
-
-      /*if( testMat == 0 )
-      {
-         testMat = 0;
-      }*/
-
-      leaf->averageNormal = averageNormal;
-      leaf->corners = corner.w;
-      leaf->position = position;
-      leaf->qef = qef.getData();
-
-      if( zero.xPos <= ChunkManager::CHUNK_SIZE + 1
-          && zero.yPos <= ChunkManager::CHUNK_SIZE + 1
-          && zero.zPos <= ChunkManager::CHUNK_SIZE + 1
-          && zero.xPos >= 0
-          && zero.yPos >= 0
-          && zero.zPos >= 0 )
-      {
-         leaf_indices.push_back( count );
-      }
-
-   }
-
-   return leaf_indices;
-}
-
-void NodeChunk::buildTree( const int size, const float threshold )
-{
-
-   auto leafs = createLeafNodes();
-
-   m_octree_root_index = createOctree( leafs, *m_pOctreeNodes, threshold, true, m_nodeIdxCurr );
-
-   m_edgesCompact.reset();
-}
-
-void NodeChunk::createVertices()
-{
-   boost::shared_ptr<IndexBuffer> pIndices = boost::make_shared<IndexBuffer>();
-   boost::shared_ptr<VertexBuffer> pVertices = boost::make_shared<VertexBuffer>();
-
-   if( m_octree_root_index == -1 )
-   {
-      m_bHasNodes = false;
-      return;
-   }
-
-   pVertices->clear();
-   pIndices->clear();
-
-   GenerateVertexIndices( m_octree_root_index, *pVertices, *m_pOctreeNodes );
-   CellProc( m_octree_root_index, *pIndices, *m_pOctreeNodes );
-
-   if( pVertices->size() <= 1 || pIndices->size() <= 1 )
-   {
-      m_bHasNodes = false;
-      return;
-   }
-   m_pVertices = pVertices;
-   m_pIndices = pIndices;
-}
 
 void NodeChunk::generate( float threshold )
 {
 
-   std::vector< OctreeNodeMdc > octreeNodes( 220000 );
+   std::vector< OctreeNodeMdc > octreeNodes( 200000 );
 
    ConstructBase( &octreeNodes[0], ChunkManager::CHUNK_SIZE, octreeNodes );
-
-
-   //if( !m_bHasNodes )
-   //{
-
-   //   this->m_samples.reset();
-   //   this->m_indices.clear();
-   //   this->m_vertices.clear();
-   //   this->m_mdcVertices.clear();
-   //   this->m_pVertices.reset();
-   //   this->m_pIndices.reset();
-   //   this->m_tri_count.clear();
-
-
-   //   return;
-   //}
 
    ( &octreeNodes[0] )->ClusterCellBase( threshold, octreeNodes );
 
@@ -523,18 +331,13 @@ void NodeChunk::ConstructBase( OctreeNodeMdc * pNode, int size, std::vector< Oct
    pNode->m_type = NodeType::Internal;
    pNode->m_child_index = 0;
    int n_index = 1;
-   if( !ConstructNodes( pNode, n_index, nodeList ) )
-   {
-      //m_bHasNodes = false;
-   }
+   ConstructNodes( pNode, n_index, nodeList );
 }
 
 bool NodeChunk::ConstructNodes( OctreeNodeMdc * pNode, int& n_index, std::vector< OctreeNodeMdc >& nodeList )
 {
    if( pNode->m_size == 1 )
-   {
       return ConstructLeaf( pNode, n_index );
-   }
 
    pNode->m_type = NodeType::Internal;
    int child_size = pNode->m_size / 2;
@@ -551,28 +354,25 @@ bool NodeChunk::ConstructNodes( OctreeNodeMdc * pNode, int& n_index, std::vector
                  Utilities::TCornerDeltas[i][1],
                  Utilities::TCornerDeltas[i][2] ) * ( float ) child_size;
 
+      // std::cout << child_pos.x << " " << child_pos.y << " " << child_pos.z << "|";
+
       auto node = &nodeList[m_nodeIdxCurr++];
       node->m_size = child_size;
       node->m_type = NodeType::Internal;
-      //auto newNode = OctreeNodeMdc( child_pos, child_size, NodeType::Internal );
-
+      
       node->m_gridX = static_cast< int32_t >( child_pos.x );
       node->m_gridY = static_cast< int32_t >( child_pos.y );
       node->m_gridZ = static_cast< int32_t >( child_pos.z );
 
       node->m_child_index = i;
       int childIndex = m_nodeIdxCurr - 1;
-      //nodeList.push_back( newNode );
       pNode->m_childIndex[i] = childIndex;
 
       int index = i;
       if( ConstructNodes( node, n_index, nodeList ) )
          has_children = true;
       else
-      {
          pNode->m_childIndex[i] = -1;
-      }
-
    }
 
    return has_children;
@@ -585,40 +385,22 @@ bool NodeChunk::ConstructLeaf( OctreeNodeMdc * pNode, int& index )
 
    pNode->m_index = index++;
    pNode->m_type = NodeType::Leaf;
-   float samples[8];
    
    auto& cellBuffer = ( *m_pCellBuffer );
    cell_t* cell = cellBuffer( pNode->m_gridX, pNode->m_gridY, pNode->m_gridZ );
-   //const auto& samples1 = *m_samples;
-   //for( int i = 0; i < 8; i++ )
-   //{
-   //   if( samples1( pNode->m_gridX + Utilities::TCornerDeltas[i][0],
-   //                 pNode->m_gridY + Utilities::TCornerDeltas[i][1],
-   //                 pNode->m_gridZ + Utilities::TCornerDeltas[i][2] ) < 0 )
-   //      pNode->m_corners |= 1 << i;
-   //}
 
    if( cell == nullptr )
-   {
-      //m_bHasNodes = false;
       return false;
-   }
 
    pNode->m_corners = cell->corners;
 
-   if( cell->corners == 0 ||
-       cell->corners == 255 )
-   {
+   if( cell->corners == 0 || cell->corners == 255 )
       return false;
-   }
-   
-   
 
-   //m_bHasNodes = true;
+   m_bHasNodes = true;
 
-   int8_t v_edges[4][12]; //the edges corresponding to each vertex
-
-
+   // the edges corresponding to each vertex
+   int8_t v_edges[4][12]; 
 
    int v_index = 0;
    int e_index = 0;
@@ -641,39 +423,35 @@ bool NodeChunk::ConstructLeaf( OctreeNodeMdc * pNode, int& index )
       v_edges[v_index][e_index++] = code;
    }
 
-
    pNode->m_vertices.reserve( v_index );
 
    for( int i = 0; i < v_index; i++ )
    {
       int k = 0;
       auto pVertex = boost::make_shared<Vertex>();
-      //pVertex->m_qef.reset();
       float3 normal = float3::zero;
       int ei[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
       while( v_edges[i][k] != -1 )
       {
-         ei[v_edges[i][k]] = 1;
-         int index = v_edges[i][k];
+         
 
-         if( cell->normals[v_edges[i][k]][0] == 0 || (cell->positions[index][0] == 0 && cell->positions[index][1] == 0 && cell->positions[index][2] == 0 ))
+
+         int index1 = v_edges[i][k];
+
+         if( ( cell->positions[index1][0] == 0 && cell->positions[index1][1] == 0 && cell->positions[index1][2] == 0 ) )
          {
-            //std::cout << cell->positions[index][0];
-            index = index;
-         }
-         else
-         {
-            index = index;
+            index1 = index1;
          }
 
-         float3 no = float3( cell->normals[v_edges[i][k]][0],
-                             cell->normals[v_edges[i][k]][1],
-                             cell->normals[v_edges[i][k]][2] );
+         ei[index1] = 1;
+         float3 no = float3( cell->normals[index1][0],
+                             cell->normals[index1][1],
+                             cell->normals[index1][2] );
 
          normal += no;
-         pVertex->m_qef.add( cell->positions[index][0], 
-                             cell->positions[index][1], 
-                             cell->positions[index][2],
+         pVertex->m_qef.add( cell->positions[index1][0], 
+                             cell->positions[index1][1], 
+                             cell->positions[index1][2],
                              no.x, no.y, no.z );
          k++;
       }

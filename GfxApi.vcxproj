@@ -97,11 +97,8 @@
     <ClInclude Include="MainClass.h" />
     <ClInclude Include="ocl.h" />
     <ClInclude Include="tinyxml2\tinyxml2.h" />
-    <ClInclude Include="voxel\AABBTree.h" />
     <ClInclude Include="voxel\ChunkManager.h" />
     <ClInclude Include="voxel\common.h" />
-    <ClInclude Include="voxel\HashMap.h" />
-    <ClInclude Include="voxel\intersection.h" />
     <ClInclude Include="voxel\NodeChunk.h" />
     <ClInclude Include="voxel\octree.h" />
     <ClInclude Include="voxel\octreemdc.h" />
@@ -137,7 +134,6 @@
     <None Include="shader\chunk.vs" />
   </ItemGroup>
   <ItemGroup>
-    <Library Include="..\lib\assimp-3.1.1\lib\Release\assimp.lib" />
     <Library Include="..\OpenGI\lib\OpenGI.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

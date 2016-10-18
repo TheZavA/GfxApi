@@ -51,7 +51,7 @@ public:
    boost::shared_ptr< GfxApi::Mesh > m_pMesh;
 
    std::vector<Vertex> m_vertices;
-   std::vector<int> m_indices;
+   std::vector<unsigned int> m_indices;
    std::vector<int> m_tri_count;
 
    boost::shared_ptr< TOctree< boost::shared_ptr< NodeChunk > > > m_pTree;

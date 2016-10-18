@@ -1274,22 +1274,22 @@ RidgedMultiFractalArray2d(
 float fBM(float2 position, float frequency, float lacunarity, float octaves)
 {
 
-    float total = 0.0f;
+   float total = 0.0f;
 
-    float gain = 0.52f;
-    //float gain = 0.48f;
+   float gain = 0.52f;
+   //float gain = 0.48f;
 
-    float amplitude = gain;
+   float amplitude = gain;
 
-	#pragma unroll
-    for (int i = 0; i < octaves; ++i)
-    {
-        total += sgnoise2d(position * frequency) * amplitude;         
-        frequency *= lacunarity;
-        amplitude *= gain;
-    }
+   #pragma unroll
+   for (int i = 0; i < octaves; ++i)
+   {
+      total += sgnoise2d(position * frequency) * amplitude;         
+      frequency *= lacunarity;
+      amplitude *= gain;
+   }
 
-    return total;   
+   return total;   
 
 }
 
@@ -1330,20 +1330,20 @@ float sphereFunction(float4 pos)
 float densities3d(float3 pos, uchar level)
 {
     
-	//return pos.y < 1000 ? -1 : 0;
-	//return sphereFunction((float4)(pos.x, pos.y, pos.z, 0.0f)) - 20000000335.f ;
-	float3 mod_pos = pos * 0.001f;
-	//level = 14;
+   //return pos.y < 1000 ? -1 : 0;
+   return sphereFunction((float4)(pos.x, pos.y, pos.z, 0.0f)) - 200000335.f ;
+   float3 mod_pos = pos * 0.001f;
+   //level = 14;
 	     
-    float mask = clamp(fBM((float2)(pos.x, pos.z), 0.00001f, 2.12f, 9), 0.0f, 1.0f);
-	float mask2 = clamp(fBM((float2)(pos.x + 80000, pos.z), 0.00004f, 2.12f, 12), 0.0f, 1.0f);
+   float mask = clamp(fBM((float2)(pos.x, pos.z), 0.00001f, 2.12f, 9), 0.0f, 1.0f);
+   float mask2 = clamp(fBM((float2)(pos.x + 80000, pos.z), 0.00004f, 2.12f, 12), 0.0f, 1.0f);
 
-	float baseMountain = fBM((float2)(mod_pos.x - 2000, mod_pos.z), 0.016f, 2.19f, min((int)(level), 3));
-    float billow = fBM((float2)(mod_pos.x - 4000, mod_pos.z), 0.009f, 2.19f,  min((int)(level), 5));
-    float detail = fabs(ridgedmultifractal2d((float2)(mod_pos.x - 14000, mod_pos.z - 8000), 0.015, 2.233, 0, min((int)(level), 2)));
+   float baseMountain = fBM((float2)(mod_pos.x - 2000, mod_pos.z), 0.016f, 2.19f, min((int)(level), 3));
+   float billow = fBM((float2)(mod_pos.x - 4000, mod_pos.z), 0.009f, 2.19f,  min((int)(level), 5));
+   float detail = fabs(ridgedmultifractal2d((float2)(mod_pos.x - 14000, mod_pos.z - 8000), 0.015, 2.233, 0, min((int)(level), 2)));
 
 
-	return mix(mix(billow * 2, detail * 10, mask) , baseMountain * 5 , mask2) - pos.y / 2600;
+   return mix(mix(billow * 2, detail * 10, mask) , baseMountain * 5 , mask2) - pos.y / 2600;
 
 
 }

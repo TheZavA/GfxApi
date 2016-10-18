@@ -32,7 +32,7 @@ NodeChunk::NodeChunk( float scale, const AABB& bounds, ChunkManager* pChunkManag
    , m_pIndices( nullptr )
    , m_pVertices( nullptr )
    , m_pOctreeNodes( nullptr )
-   , m_bHasNodes( hasNodes )
+   , m_bHasNodes( false )
    , m_nodeIdxCurr( 0 )
    , m_bGenerated( false )
   // , m_bGenerationStarted( false )
@@ -65,11 +65,9 @@ void NodeChunk::generateDensities()
 void NodeChunk::generateFullEdges()
 {
 
-   int halfSize = ( ChunkManager::CHUNK_SIZE + 1 ) / 2;
-
    typedef boost::chrono::high_resolution_clock Clock;
 
-   m_pCellBuffer = boost::make_shared<TVolume3d<cell_t*>>( ChunkManager::CHUNK_SIZE + 4, ChunkManager::CHUNK_SIZE + 4, ChunkManager::CHUNK_SIZE + 4 );
+   m_pCellBuffer = boost::make_shared< TVolume3d< cell_t* > >( ChunkManager::CHUNK_SIZE +2, ChunkManager::CHUNK_SIZE +2, ChunkManager::CHUNK_SIZE +2 );
    memset( m_pCellBuffer->getDataPtr(), 0, m_pCellBuffer->m_xyzSize * 4 );
 
    auto zeroCrossCompact = boost::make_shared<std::vector<cell_t>>();
@@ -101,14 +99,18 @@ void NodeChunk::generateFullEdges()
             continue;
          }
 
+         if( x1 == 7 && y1 == 0 && z1 == 0 )
+         {
+            int sdsd = 1;
+         }
          cell_t* cell = cellBuffer( x1, y1, z1 );
-
 
          if( cell == nullptr )
          {
             zeroCrossCompact->emplace_back();
             cell = &zeroCrossCompact->back();
-            cell->edgeCount = 0;
+            //memset( cell, 0, sizeof( cell_t ) );
+            //cell->edgeCount = 0;
             cell->corners = 0;
             cellBuffer( x1, y1, z1 ) = cell;
 
@@ -135,7 +137,12 @@ void NodeChunk::generateFullEdges()
          zero1->yPos = y1;
          zero1->zPos = z1;
 
-         zero1->edgeCount++;
+         if( zero1->xPos > 36 )
+         {
+            zero1 = zero1;
+         }
+
+         //zero1->edgeCount++;
       }
 
    }
@@ -214,7 +221,7 @@ void NodeChunk::createMesh()
       *( int* ) ( &vbPtr[offset + 7] ) = 0;
       offset += 8;
 
-    /*  if( vertexInf.m_material == 0 )
+     /* if( vertexInf.m_material == 0 )
       {
          continue;
       }*/
@@ -263,8 +270,6 @@ void NodeChunk::classifyEdges()
    std::vector<cl_edge_info_t> compactedEdges;
    m_pChunkManager->m_ocl->classifyEdges( ChunkManager::CHUNK_SIZE + 4, compactedEdges );
 
-
-
    auto edges_compact = boost::make_shared<std::vector<edge_t>>();
 
    // reserve some memory so the push back does not have to resize the vector all the time.
@@ -303,7 +308,7 @@ void NodeChunk::classifyEdges()
       }
    }
 
-   m_bHasNodes = false;
+  // m_bHasNodes = false;
 
    if( edges_compact->size() > 0 )
    {
@@ -352,7 +357,6 @@ int findPopular( uint8_t* a, int length )
    return highestIndex;
 }
 
-
 std::vector<uint32_t> NodeChunk::createLeafNodes()
 {
    std::vector<uint32_t> leaf_indices;
@@ -372,11 +376,11 @@ std::vector<uint32_t> NodeChunk::createLeafNodes()
       float3 position;
 
       QefSolver qef;
-      for( int i = 0; i < zeroCl.edgeCount; i++ )
+   /*   for( int i = 0; i < zeroCl.edgeCount; i++ )
       {
          qef.add( zeroCl.positions[i][0], zeroCl.positions[i][1], zeroCl.positions[i][2],
                   zeroCl.normals[i][0], zeroCl.normals[i][1], zeroCl.normals[i][2] );
-      }
+      }*/
 
       Vec3 qefPosition;
       qef.solve( qefPosition, QEF_ERROR, 4, QEF_ERROR );
@@ -394,10 +398,10 @@ std::vector<uint32_t> NodeChunk::createLeafNodes()
          position.z = qef.getMassPoint().z;
       }
 
-      for( int i = 0; i < zeroCl.edgeCount; i++ )
+    /*  for( int i = 0; i < zeroCl.edgeCount; i++ )
       {
          averageNormal += float3( zeroCl.normals[i][0], zeroCl.normals[i][1], zeroCl.normals[i][2] );
-      }
+      }*/
 
       averageNormal = averageNormal.Normalized();
 
@@ -443,9 +447,6 @@ std::vector<uint32_t> NodeChunk::createLeafNodes()
    return leaf_indices;
 }
 
-
-
-
 void NodeChunk::buildTree( const int size, const float threshold )
 {
 
@@ -455,7 +456,6 @@ void NodeChunk::buildTree( const int size, const float threshold )
 
    m_edgesCompact.reset();
 }
-
 
 void NodeChunk::createVertices()
 {
@@ -486,7 +486,7 @@ void NodeChunk::createVertices()
 void NodeChunk::generate( float threshold )
 {
 
-   std::vector< OctreeNodeMdc > octreeNodes( 280000 );
+   std::vector< OctreeNodeMdc > octreeNodes( 220000 );
 
    ConstructBase( &octreeNodes[0], ChunkManager::CHUNK_SIZE, octreeNodes );
 
@@ -525,7 +525,7 @@ void NodeChunk::ConstructBase( OctreeNodeMdc * pNode, int size, std::vector< Oct
    int n_index = 1;
    if( !ConstructNodes( pNode, n_index, nodeList ) )
    {
-      m_bHasNodes = false;
+      //m_bHasNodes = false;
    }
 }
 
@@ -542,6 +542,7 @@ bool NodeChunk::ConstructNodes( OctreeNodeMdc * pNode, int& n_index, std::vector
    bool has_children = false;
 
    float3 gridPos( pNode->m_gridX, pNode->m_gridY, pNode->m_gridZ );
+
    for( int i = 0; i < 8; i++ )
    {
       pNode->m_index = n_index++;
@@ -577,83 +578,6 @@ bool NodeChunk::ConstructNodes( OctreeNodeMdc * pNode, int& n_index, std::vector
    return has_children;
 }
 
-float sphereFunction( float x, float y, float z )
-{
-   //y = atan(y);
-   //return ( x*x  + y*y + z*z ) - 100000.0f;
-   return ( x*x + y*y + z*z ) - 10000000.0f;
-   //return sin( x * x + y * y + z*z ) *1000;
-
-}
-
-float3 findCrossingPoint( int quality, float3 pt0, float3 pt1 )
-{
-   float isoValue = 0.0f;
-
-   float3 p0 = pt0;
-   float v0 = sphereFunction( pt0.x, pt0.y, pt0.z );
-   float3 p1 = pt1;
-   float v1 = sphereFunction( pt1.x, pt1.y, pt1.z );
-
-   float alpha = ( 0 - v0 ) / ( v1 - v0 );
-
-   // Interpolate
-   float3 pos;
-   pos.x = p0.x + alpha * ( p1.x - p0.x );
-   pos.y = p0.y + alpha * ( p1.y - p0.y );
-   pos.z = p0.z + alpha * ( p1.z - p0.z );
-
-
-   // Re-Sample
-   float val = sphereFunction( pos.x, pos.y, pos.z );
-
-   // Return if good enough
-   if( ( fabs( isoValue - val ) < 0.000001f ) || ( quality == 0 ) )
-   {
-      return pos;
-   }
-   else
-   {
-      if( val < 0.f )
-      {
-         if( v0 > 0.f )
-            pos = findCrossingPoint( quality - 1, pos, pt0 );
-         else if( v1 > 0.f )
-            pos = findCrossingPoint( quality - 1, pos, pt1 );
-      }
-      else if( val > 0.f )
-      {
-         if( v0 < 0.f )
-            pos = findCrossingPoint( quality - 1, pt0, pos );
-         else if( v1 < 0.f )
-            pos = findCrossingPoint( quality - 1, pt1, pos );
-      }
-   }
-
-   return pos;
-}
-
-float3 getNormal( float3 intersection )
-{
-   float H = 0.1f;
-   float3 xyz1 = float3( intersection.x + H, intersection.y + 0.f, intersection.z + 0.f );
-   float3 xyz1_1 = float3( intersection.x - H, intersection.y - 0.f, intersection.z - 0.f );
-
-   float3 xyz2 = intersection + float3( 0.0f, H, 0.f );
-   float3 xyz2_1 = intersection - float3( 0.0f, H, 0.f );
-
-   float3 xyz3 = intersection + float3( 0.0f, 0.0f, H );
-   float3 xyz3_1 = intersection - float3( 0.0f, 0.0f, H );
-
-   const float dx = sphereFunction( xyz1.x, xyz1.y, xyz1.z ) - sphereFunction( xyz1_1.x, xyz1_1.y, xyz1_1.z );
-
-   const float dy = sphereFunction( xyz2.x, xyz2.y, xyz2.z ) - sphereFunction( xyz2_1.x, xyz2_1.y, xyz2_1.z );
-
-   const float dz = sphereFunction( xyz3.x, xyz3.y, xyz3.z ) - sphereFunction( xyz3_1.x, xyz3_1.y, xyz3_1.z );
-
-   return float3( dx, dy, dz ).Normalized();
-}
-
 bool NodeChunk::ConstructLeaf( OctreeNodeMdc * pNode, int& index )
 {
    if( pNode->m_size != 1 )
@@ -680,15 +604,17 @@ bool NodeChunk::ConstructLeaf( OctreeNodeMdc * pNode, int& index )
       return false;
    }
 
+   pNode->m_corners = cell->corners;
+
    if( cell->corners == 0 ||
        cell->corners == 255 )
    {
       return false;
    }
+   
+   
 
-   pNode->m_corners = cell->corners;
-
-   m_bHasNodes = true;
+   //m_bHasNodes = true;
 
    int8_t v_edges[4][12]; //the edges corresponding to each vertex
 
@@ -728,25 +654,26 @@ bool NodeChunk::ConstructLeaf( OctreeNodeMdc * pNode, int& index )
       while( v_edges[i][k] != -1 )
       {
          ei[v_edges[i][k]] = 1;
+         int index = v_edges[i][k];
+
+         if( cell->normals[v_edges[i][k]][0] == 0 || (cell->positions[index][0] == 0 && cell->positions[index][1] == 0 && cell->positions[index][2] == 0 ))
+         {
+            //std::cout << cell->positions[index][0];
+            index = index;
+         }
+         else
+         {
+            index = index;
+         }
 
          float3 no = float3( cell->normals[v_edges[i][k]][0],
                              cell->normals[v_edges[i][k]][1],
                              cell->normals[v_edges[i][k]][2] );
-         //float3 a = basePos +
-         //   float3( m_scale * Utilities::TCornerDeltas[Utilities::TEdgePairs[v_edges[i][k]][0]][0],
-         //           m_scale * Utilities::TCornerDeltas[Utilities::TEdgePairs[v_edges[i][k]][0]][1],
-         //           m_scale * Utilities::TCornerDeltas[Utilities::TEdgePairs[v_edges[i][k]][0]][2] );
 
-         //float3 b = basePos +
-         //   float3( m_scale * Utilities::TCornerDeltas[Utilities::TEdgePairs[v_edges[i][k]][1]][0],
-         //           m_scale * Utilities::TCornerDeltas[Utilities::TEdgePairs[v_edges[i][k]][1]][1],
-         //           m_scale * Utilities::TCornerDeltas[Utilities::TEdgePairs[v_edges[i][k]][1]][2] );
-
-         //// right, for now just take the avg
-         //float3 intersection = findCrossingPoint( 6, a, b );
-         //float3 n = getNormal( intersection );
          normal += no;
-         pVertex->m_qef.add( cell->positions[v_edges[i][k]][0], cell->positions[v_edges[i][k]][1], cell->positions[v_edges[i][k]][2],
+         pVertex->m_qef.add( cell->positions[index][0], 
+                             cell->positions[index][1], 
+                             cell->positions[index][2],
                              no.x, no.y, no.z );
          k++;
       }

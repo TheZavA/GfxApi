@@ -166,7 +166,7 @@ public:
 
 
 
-   void ProcessCell( std::vector<int>& indexes,
+   void ProcessCell( std::vector<unsigned int>& indexes,
                      std::vector<int>& tri_count,
                      float threshold,
                      std::vector<  OctreeNodeMdc  >& nodeList )
@@ -213,7 +213,7 @@ public:
 
    void ProcessFace( int32_t nodes[2],
                      int direction,
-                     std::vector<int>& indexes,
+                     std::vector<unsigned int>& indexes,
                      std::vector<int>& tri_count,
                      float threshold,
                      std::vector<  OctreeNodeMdc >& nodeList )
@@ -269,7 +269,7 @@ public:
 
    void ProcessEdge( int32_t nodes[4],
                      int direction,
-                     std::vector<int>& indexes,
+                     std::vector<unsigned int>& indexes,
                      std::vector<int>& tri_count,
                      float threshold,
                      std::vector<  OctreeNodeMdc >& nodeList )
@@ -311,7 +311,7 @@ public:
 
    void ProcessIndexes( int32_t nodes[4],
                         int direction,
-                        std::vector<int>& indexes,
+                        std::vector<unsigned int>& indexes,
                         std::vector<int>& tri_count,
                         float threshold,
                         std::vector<  OctreeNodeMdc  >& nodeList )
@@ -376,10 +376,8 @@ public:
          while( highest->m_pParent != nullptr )
          {
             //assert( highest->m_pParent->m_error >= 0 );
-            if( /*highest->m_pParent->m_collapsible
-                ||*/ ( highest->m_pParent->m_error <= threshold
-                       && ( !true || ( highest->m_pParent->m_euler == 1 &&
-                                       highest->m_pParent->m_face_prop2 ) ) ) )
+            if( ( highest->m_pParent->m_error <= threshold
+                       && ( ( highest->m_pParent->m_euler == 1 && highest->m_pParent->m_face_prop2 ) ) ) )
             {
                highest = highest->m_pParent;
                v = highest;
@@ -641,6 +639,7 @@ public:
             new_vertex->m_position.z = outVec.z;
 
             float err = new_vertex->m_qef.getError();
+
             //assert( err >= 0 );
 
             new_vertex->m_collapsible = err <= error;
@@ -763,12 +762,12 @@ public:
    {
       if( ( nodes[0] == -1 ||
             nodeList[nodes[0]].m_type != NodeType::Internal ) &&
-            ( nodes[1] == -1 ||
-              nodeList[nodes[1]].m_type != NodeType::Internal ) &&
-              ( nodes[2] == -1 ||
-                nodeList[nodes[2]].m_type != NodeType::Internal ) &&
-                ( nodes[3] == -1 ||
-                  nodeList[nodes[3]].m_type != NodeType::Internal ) )
+          ( nodes[1] == -1 ||
+            nodeList[nodes[1]].m_type != NodeType::Internal ) &&
+          ( nodes[2] == -1 ||
+            nodeList[nodes[2]].m_type != NodeType::Internal ) &&
+          ( nodes[3] == -1 ||
+            nodeList[nodes[3]].m_type != NodeType::Internal ) )
       {
          ClusterIndexes( nodes, direction, surface_index, collected_vertices, nodeList );
       }

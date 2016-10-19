@@ -135,7 +135,7 @@ public:
       if( m_vertices.size() == 0 )
          return;
 
-      for( int i = 0; i < m_vertices.size(); i++ )
+      for( std::size_t i = 0; i < m_vertices.size(); i++ )
       {
          if( m_vertices[i] == nullptr )
             continue;

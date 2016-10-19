@@ -247,7 +247,7 @@ void MainClass::updateCamera( float deltaTime )
    m_camera.up.Normalize();
    m_camera.front.Normalize();
 
-   //printf("%f %f %f \n", m_camera.pos.x, m_camera.pos.y, m_camera.pos.z);
+   
 }
 
 void MainClass::mainLoop()
@@ -432,6 +432,7 @@ void MainClass::handleInput( float deltaTime )
 
    if( m_pInput->keyPressed( GLFW_KEY_K ) )
    {
+      printf( "%f %f %f \n", m_camera.pos.x, m_camera.pos.y, m_camera.pos.z );
       m_bShowTree = true;
    }
 

@@ -123,17 +123,8 @@ void NodeChunk::generateFullEdges()
          zero1->xPos = x1;
          zero1->yPos = y1;
          zero1->zPos = z1;
-
-         if( zero1->xPos > 36 )
-         {
-            zero1 = zero1;
-         }
-
       }
-
    }
-
-
 
    if( zeroCrossCompact->size() > 0 )
    {
@@ -314,6 +305,8 @@ void NodeChunk::generate( float threshold )
 
    ConstructBase( &octreeNodes[0], ChunkManager::CHUNK_SIZE, octreeNodes );
 
+   //std::cout << "\n\n";
+
    ( &octreeNodes[0] )->ClusterCellBase( threshold, octreeNodes );
 
    ( &octreeNodes[0] )->GenerateVertexBuffer( m_mdcVertices, octreeNodes );
@@ -344,25 +337,17 @@ bool NodeChunk::ConstructNodes( OctreeNodeMdc * pNode, int& n_index, std::vector
 
    bool has_children = false;
 
-   float3 gridPos( pNode->m_gridX, pNode->m_gridY, pNode->m_gridZ );
-
    for( int i = 0; i < 8; i++ )
    {
       pNode->m_index = n_index++;
-      float3 child_pos = gridPos +
-         float3( Utilities::TCornerDeltas[i][0],
-                 Utilities::TCornerDeltas[i][1],
-                 Utilities::TCornerDeltas[i][2] ) * ( float ) child_size;
-
-      // std::cout << child_pos.x << " " << child_pos.y << " " << child_pos.z << "|";
 
       auto node = &nodeList[m_nodeIdxCurr++];
       node->m_size = child_size;
       node->m_type = NodeType::Internal;
       
-      node->m_gridX = static_cast< int32_t >( child_pos.x );
-      node->m_gridY = static_cast< int32_t >( child_pos.y );
-      node->m_gridZ = static_cast< int32_t >( child_pos.z );
+      node->m_gridX = pNode->m_gridX + Utilities::TCornerDeltas[i][0] * child_size;
+      node->m_gridY = pNode->m_gridY + Utilities::TCornerDeltas[i][1] * child_size;
+      node->m_gridZ = pNode->m_gridZ + Utilities::TCornerDeltas[i][2] * child_size;
 
       node->m_child_index = i;
       int childIndex = m_nodeIdxCurr - 1;
@@ -374,6 +359,7 @@ bool NodeChunk::ConstructNodes( OctreeNodeMdc * pNode, int& n_index, std::vector
       else
          pNode->m_childIndex[i] = -1;
    }
+   
 
    return has_children;
 }
@@ -394,8 +380,26 @@ bool NodeChunk::ConstructLeaf( OctreeNodeMdc * pNode, int& index )
 
    pNode->m_corners = cell->corners;
 
+   float3 worldpos = this->m_chunk_bounds.minPoint + float3( pNode->m_gridX, pNode->m_gridY, pNode->m_gridZ ) * this->m_scale;
+
+   int testCorner = 0;
+   for( int i = 0; i < 8; i++ )
+   {
+      if(  worldpos.y + (float)Utilities::TCornerDeltas[i][1] * this->m_scale < 400 )
+         testCorner |= 1 << i;
+   }
+   //return pos.y < 400 ? -1 : 1;
+   
    if( cell->corners == 0 || cell->corners == 255 )
       return false;
+
+
+   if( pNode->m_gridX > 10 && pNode->m_gridZ < 1 )
+   {
+      index = index;
+   }
+
+   //std::cout << std::to_string( pNode->m_gridX ) << " " << std::to_string( pNode->m_gridY )  << " " << std::to_string( pNode->m_gridZ ) << "|";
 
    m_bHasNodes = true;
 
@@ -434,8 +438,6 @@ bool NodeChunk::ConstructLeaf( OctreeNodeMdc * pNode, int& index )
       while( v_edges[i][k] != -1 )
       {
          
-
-
          int index1 = v_edges[i][k];
 
          if( ( cell->positions[index1][0] == 0 && cell->positions[index1][1] == 0 && cell->positions[index1][2] == 0 ) )

@@ -30,8 +30,8 @@ public:
    ChunkManager( Frustum& camera );
    ~ChunkManager( void );
 
-   static const int CHUNK_SIZE = 16;
-   static const int MAX_LOD_LEVEL = 3;
+   static const int CHUNK_SIZE = 32;
+   static const int MAX_LOD_LEVEL = 10;
 
    static const int WORLD_BOUNDS_MIN_XZ = -512000;
    static const int WORLD_BOUNDS_MIN_Y = -512000;

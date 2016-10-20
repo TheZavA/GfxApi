@@ -119,6 +119,12 @@ public:
    void GenerateVertexBuffer( std::vector<VertexPositionNormal>& vertices,
                               std::vector< OctreeNodeMdc >& nodeList )
    {
+
+      if( m_gridX < 2 && m_gridZ < 2 )
+      {
+         m_gridX = m_gridX;
+      }
+
       if( m_type != NodeType::Leaf )
       {
          for( int i = 0; i < 8; i++ )
@@ -134,7 +140,6 @@ public:
 
       if( m_vertices.size() == 0 )
          return;
-
       for( std::size_t i = 0; i < m_vertices.size(); i++ )
       {
          if( m_vertices[i] == nullptr )

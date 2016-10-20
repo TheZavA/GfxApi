@@ -207,11 +207,12 @@ float QefSolver::getError( const Vec3 &pos )
 
    Vec3 atax;
    MatUtils::vmul_symmetric( atax, this->ata, pos );
-   //assert( VecUtils::dot( pos, atax ) > 0 );
+   assert( VecUtils::dot( pos, atax ) > 0 );
    float err = VecUtils::dot( pos, atax ) - 2 * VecUtils::dot( pos, this->atb )
       + this->data.btb;
-   //assert( err >= 0 );
-   return err < 0 ? 0 : err;
+   assert( err >= 0 );
+   return err;
+   //return err < 0 ? 0 : err;
 }
 
 void QefSolver::reset()
@@ -245,7 +246,7 @@ float QefSolver::solve( Vec3 &outx, const float svd_tol,
    VecUtils::scale( this->massPoint, 1.0f / this->data.numPoints );
    this->setAta();
    this->setAtb();
-   Vec3 tmpv; 
+   Vec3 tmpv;
    MatUtils::vmul_symmetric( tmpv, this->ata, this->massPoint );
    VecUtils::sub( this->atb, this->atb, tmpv );
    this->x.clear();

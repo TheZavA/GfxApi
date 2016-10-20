@@ -54,7 +54,7 @@ void NodeChunk::generateFullEdges()
 
    typedef boost::chrono::high_resolution_clock Clock;
 
-   m_pCellBuffer = boost::make_shared< TVolume3d< cell_t* > >( ChunkManager::CHUNK_SIZE +2, ChunkManager::CHUNK_SIZE +2, ChunkManager::CHUNK_SIZE +2 );
+   m_pCellBuffer = boost::make_shared< TVolume3d< cell_t* > >( ChunkManager::CHUNK_SIZE +4, ChunkManager::CHUNK_SIZE +4, ChunkManager::CHUNK_SIZE +4 );
    memset( m_pCellBuffer->getDataPtr(), 0, m_pCellBuffer->m_xyzSize * 4 );
 
    auto zeroCrossCompact = boost::make_shared<std::vector<cell_t>>();
@@ -79,9 +79,9 @@ void NodeChunk::generateFullEdges()
          int target_index = edgeDuplicateIndex[edge_index][y];
 
          if( x1 < 0 || y1 < 0 || z1 < 0 ||
-             x1 > ChunkManager::CHUNK_SIZE + 1 ||
-             y1 > ChunkManager::CHUNK_SIZE + 1 ||
-             z1 > ChunkManager::CHUNK_SIZE + 1 )
+             x1 > ChunkManager::CHUNK_SIZE + 2 ||
+             y1 > ChunkManager::CHUNK_SIZE + 2 ||
+             z1 > ChunkManager::CHUNK_SIZE + 2 )
          {
             continue;
          }
@@ -301,9 +301,9 @@ void NodeChunk::generateZeroCross()
 void NodeChunk::generate( float threshold )
 {
 
-   std::vector< OctreeNodeMdc > octreeNodes( 200000 );
-
-   ConstructBase( &octreeNodes[0], ChunkManager::CHUNK_SIZE, octreeNodes );
+   std::vector< OctreeNodeMdc > octreeNodes( 260000 );
+   m_nodeIdxCurr = 1;
+   ConstructBase( &octreeNodes[0], ChunkManager::CHUNK_SIZE + 1, octreeNodes );
 
    //std::cout << "\n\n";
 
@@ -350,17 +350,15 @@ bool NodeChunk::ConstructNodes( OctreeNodeMdc * pNode, int& n_index, std::vector
       node->m_gridZ = pNode->m_gridZ + Utilities::TCornerDeltas[i][2] * child_size;
 
       node->m_child_index = i;
+
       int childIndex = m_nodeIdxCurr - 1;
       pNode->m_childIndex[i] = childIndex;
 
-      int index = i;
       if( ConstructNodes( node, n_index, nodeList ) )
          has_children = true;
       else
          pNode->m_childIndex[i] = -1;
    }
-   
-
    return has_children;
 }
 
@@ -371,37 +369,37 @@ bool NodeChunk::ConstructLeaf( OctreeNodeMdc * pNode, int& index )
 
    pNode->m_index = index++;
    pNode->m_type = NodeType::Leaf;
-   
+
+ /*  float3 worldpos = this->m_chunk_bounds.minPoint + float3( pNode->m_gridX, pNode->m_gridY, pNode->m_gridZ ) * this->m_scale;
+
+   int testCorner = 0;
+   for( int i = 0; i < 8; i++ )
+   {
+      if( worldpos.y + ( float ) Utilities::TCornerDeltas[i][1] * this->m_scale < 400 )
+         testCorner |= 1 << i;
+   }
+
+*/
+
    auto& cellBuffer = ( *m_pCellBuffer );
    cell_t* cell = cellBuffer( pNode->m_gridX, pNode->m_gridY, pNode->m_gridZ );
+
+   //if( testCorner != 0 && testCorner != 255 )
+   //   assert( cell != nullptr ) ;
 
    if( cell == nullptr )
       return false;
 
    pNode->m_corners = cell->corners;
-
-   float3 worldpos = this->m_chunk_bounds.minPoint + float3( pNode->m_gridX, pNode->m_gridY, pNode->m_gridZ ) * this->m_scale;
-
-   int testCorner = 0;
-   for( int i = 0; i < 8; i++ )
-   {
-      if(  worldpos.y + (float)Utilities::TCornerDeltas[i][1] * this->m_scale < 400 )
-         testCorner |= 1 << i;
-   }
-   //return pos.y < 400 ? -1 : 1;
    
-   if( cell->corners == 0 || cell->corners == 255 )
+   if( pNode->m_corners == 0 || pNode->m_corners == 255 )
       return false;
 
 
-   if( pNode->m_gridX > 10 && pNode->m_gridZ < 1 )
-   {
-      index = index;
-   }
 
    //std::cout << std::to_string( pNode->m_gridX ) << " " << std::to_string( pNode->m_gridY )  << " " << std::to_string( pNode->m_gridZ ) << "|";
 
-   m_bHasNodes = true;
+   //m_bHasNodes = true;
 
    // the edges corresponding to each vertex
    int8_t v_edges[4][12]; 
@@ -411,7 +409,7 @@ bool NodeChunk::ConstructLeaf( OctreeNodeMdc * pNode, int& index )
 
    for( int e = 0; e < 16; e++ )
    {
-      int code = Utilities::TransformedEdgesTable[cell->corners][e];
+      int code = Utilities::TransformedEdgesTable[pNode->m_corners][e];
       if( code == -2 )
       {
          v_edges[v_index++][e_index] = -1;
@@ -440,21 +438,17 @@ bool NodeChunk::ConstructLeaf( OctreeNodeMdc * pNode, int& index )
          
          int index1 = v_edges[i][k];
 
-         if( ( cell->positions[index1][0] == 0 && cell->positions[index1][1] == 0 && cell->positions[index1][2] == 0 ) )
-         {
-            index1 = index1;
-         }
-
          ei[index1] = 1;
          float3 no = float3( cell->normals[index1][0],
                              cell->normals[index1][1],
                              cell->normals[index1][2] );
 
          normal += no;
-         pVertex->m_qef.add( cell->positions[index1][0], 
-                             cell->positions[index1][1], 
+         pVertex->m_qef.add( cell->positions[index1][0],
+                             cell->positions[index1][1],
                              cell->positions[index1][2],
                              no.x, no.y, no.z );
+
          k++;
       }
 

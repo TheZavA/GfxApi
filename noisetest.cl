@@ -1295,7 +1295,7 @@ float sphereFunction(float4 pos)
     
     float mask = clamp(0.5f - 0.5f * fBM((float2)(mod_pos.x, mod_pos.z), 0.1f, 2.12f, 15), 0.0f, 1.0f);
 
-    float baseMountain =  fBM((float2)(mod_pos.x, mod_pos.z), 0.31f, 2.19f, 5);
+    float baseMountain =  ridgedmultifractal3d((float2)(mod_pos.x, mod_pos.y, mod_pos.z), 0.31f, 2.19f, 0, 15);
 
 
     //return pos.y < 1000 ? -1 : 0;
@@ -1327,10 +1327,24 @@ float densities3d(float3 pos, uchar level)
 
    float baseMountain = fBM((float2)(mod_pos.x - 2000, mod_pos.z), 0.016f, 2.19f, min((int)(level), 3));
    float billow = fBM((float2)(mod_pos.x - 4000, mod_pos.z), 0.009f, 2.19f,  min((int)(level), 5));
-   float detail = fabs(ridgedmultifractal2d((float2)(mod_pos.x - 14000, mod_pos.z - 8000), 0.015, 2.233, 0, min((int)(level), 2)));
+   float detail = fabs(ridgedmultifractal3d((float4)(mod_pos.x - 14000, mod_pos.y, mod_pos.z - 8000, 0), 0.015, 2.233, 0, min((int)(level), 12)));
 
+   if( pos.y > 900 )
+   {
+      detail = detail * 0.85;
+   }
 
-   return mix(mix(billow * 2, detail * 10, mask) , baseMountain * 5 , mask2) - pos.y / 2600;
+   if( pos.y > 1800 )
+   {
+      detail = detail * 0.85;
+   }
+
+   if( pos.y > 2700 )
+   {
+      detail = detail * 0.85;
+   }
+
+   return mix(mix(billow * 2, detail * 10, mask) , baseMountain * 10 , mask2) - pos.y / 2600;
 
 
 }

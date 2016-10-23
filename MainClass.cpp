@@ -358,7 +358,7 @@ void MainClass::mainLoop()
    {
 
       onTick();
-      Sleep( 1 );
+//      sleep( 1 );
 
    }
 

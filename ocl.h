@@ -334,27 +334,6 @@ struct ocl_t
 
    }
 
-   void getCompactCornersForCell( cell_t* r, std::size_t rn )
-   {
-      std::size_t units = rn;
-
-      auto tempBuffer = boost::make_shared<cl::Buffer>( *context, CL_MEM_READ_WRITE, rn*sizeof( cell_t ) );
-
-      m_queue.enqueueWriteBuffer( *tempBuffer, CL_TRUE, 0, rn*sizeof( cell_t ), r );
-
-      cl::Kernel classify_kernel( *program, "computeCornersFromCell" );
-      classify_kernel.setArg( 0, *m_density_buffer );
-      classify_kernel.setArg( 1, *tempBuffer );
-      classify_kernel.setArg( 2, ( int ) ChunkManager::CHUNK_SIZE + 4 );
-
-      m_queue.enqueueNDRangeKernel( classify_kernel, cl::NullRange, cl::NDRange( units ) );
-
-      int result = 0;
-      m_queue.enqueueReadBuffer( *tempBuffer, CL_TRUE, 0, rn*sizeof( cell_t ), r );
-
-   }
-
-
    void generateZeroCrossing( std::vector<edge_t>& r, float worldx, float worldy, float worldz, float res, uint8_t level )
    {
       std::size_t unit_size = 1;

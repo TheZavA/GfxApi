@@ -24,7 +24,7 @@ ChunkManager::ChunkManager( Frustum& camera )
    : m_chunks_pending( 0 )
 {
 
-   m_pCellBuffer = boost::make_shared<TVolume3d<cell_t*>>( ChunkManager::CHUNK_SIZE + 4, ChunkManager::CHUNK_SIZE + 4, ChunkManager::CHUNK_SIZE + 4 );
+   m_pCellBuffer = boost::make_shared<TVolume3d<cell_t*>>( ChunkManager::CHUNK_SIZE, ChunkManager::CHUNK_SIZE, ChunkManager::CHUNK_SIZE );
 
    m_ocl = boost::make_shared<ocl_t>( 0, 0 );
    std::vector<std::string> sources;
@@ -465,13 +465,10 @@ void ChunkManager::updateLoDTree( Frustum& camera )
                if( isAcceptablePixelError( camera.pos, *leaf->getChild( corner ) ) )
                {
 
-                  //if( leaf->getValue()->m_occupation[corner.x_i()][corner.y_i()][corner.z_i()] )
-                  {
-                     initTree( leaf->getChild( corner ) );
-                     m_chunks_pending++;
-                     ( *scene_next )[level].insert( leaf->getChild( corner )->getValue() );
-                  }
-
+                  initTree( leaf->getChild( corner ) );
+                  m_chunks_pending++;
+                  ( *scene_next )[level].insert( leaf->getChild( corner )->getValue() );
+                  
                }
 
             }
@@ -624,8 +621,6 @@ void ChunkManager::updateLoDTree2( Frustum& camera )
                }
             }
 
-
-
          }
       }
       ++w;
@@ -654,6 +649,11 @@ void ChunkManager::updateLoDTree2( Frustum& camera )
 
       for( auto& corner : cube::corner_t::all() )
       {
+         if( !leaf->m_children )
+         {
+            continue;
+         }
+
          auto& chunkRef = leaf->getChild( corner );
 
          if( chunkRef && chunkRef->getValue() && chunkRef->getValue()->m_bGenerated == false )
@@ -768,6 +768,7 @@ void ChunkManager::chunkLoaderThread()
          {
             chunk->m_edgesCompact.reset();
             chunk->m_workInProgress.reset();
+            chunk->m_pCellBuffer.reset();
             did_some_work = true;
             m_nodeChunkMeshGeneratorQueue.push( chunk );
 
@@ -835,15 +836,8 @@ void ChunkManager::chunkContourThread()
 
          assert( chunk->m_zeroCrossCompact != 0 );
          auto t11 = Clock::now();
-        // chunk->buildTree( ChunkManager::CHUNK_SIZE, -1.02f );
-        // chunk->createVertices();
 
          chunk->generate( -1.0f );
-
-         if( chunk->m_pOctreeNodes )
-         {
-            ( *( chunk->m_pOctreeNodes ) ).clear();
-         }
 
          chunk->m_edgesCompact.reset();
 
@@ -854,8 +848,6 @@ void ChunkManager::chunkContourThread()
 
          did_some_work = true;
          auto t2 = Clock::now();
-         //std::cout << "contour" << t2 - t11 << "\n";
-
       }
 
       if( !did_some_work )

@@ -173,7 +173,7 @@ genZeroCross(__global cl_edge_t* edge_array, cl_float3_t base_pos, float res, uc
    //const float3 p = e1;
    //const float3 p = approximateZeroCrossingPosition(e1, e2, res, level);
 
-   const float3 p = findCrossingPoint(2, e1, e2, level);
+   const float3 p = findCrossingPoint(10, e1, e2, level);
 
    const float3 pos = (p - (float3)(base_pos.x, base_pos.y, base_pos.z)) / res;
 

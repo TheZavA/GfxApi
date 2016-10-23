@@ -33,9 +33,9 @@ public:
 
    std::atomic< bool > m_bGenerated;
 
-   AABB m_chunk_bounds;
+   boost::shared_ptr< bool > m_workInProgress;
 
-   uint32_t m_octree_root_index;
+   AABB m_chunk_bounds;
 
    boost::shared_ptr < TVolume3d<cell_t*> > m_pCellBuffer;
 
@@ -43,39 +43,27 @@ public:
    boost::shared_ptr< std::vector< edge_t > > m_edgesCompact;
    boost::shared_ptr< std::vector< cell_t > > m_zeroCrossCompact;
 
-   boost::shared_ptr< bool > m_workInProgress;
-
-
-   boost::shared_ptr< IndexBuffer > m_pIndices;
-   boost::shared_ptr< VertexBuffer > m_pVertices;
    boost::shared_ptr< GfxApi::Mesh > m_pMesh;
 
-   std::vector<Vertex> m_vertices;
    std::vector<unsigned int> m_indices;
    std::vector<int> m_tri_count;
+
+   std::vector<VertexPositionNormal> m_mdcVertices;
 
    boost::shared_ptr< TOctree< boost::shared_ptr< NodeChunk > > > m_pTree;
 
    int32_t m_nodeIdxCurr;
 
-   boost::shared_ptr< std::vector< OctreeNode > > m_pOctreeNodes;
-   boost::shared_ptr< std::vector< uint32_t > > m_pOctreeNodeIndices;
-
    NodeChunk( float scale, const AABB& bounds, ChunkManager* pChunkManager, bool hasNodes = false );
 
    ~NodeChunk();
-
-   std::vector<uint32_t> createLeafNodes();
 
    void ConstructBase( OctreeNodeMdc * pNode, int size, std::vector< OctreeNodeMdc >& nodeList );
    bool ConstructNodes( OctreeNodeMdc * pNode, int& n_index, std::vector<  OctreeNodeMdc >& nodeList );
    bool ConstructLeaf( OctreeNodeMdc * pNode, int& index );
 
-   void buildTree( const int size, const float threshold );
-
    void generate( float threshold );
 
-   void createVertices();
    void createMesh();
 
    void classifyEdges();
@@ -87,7 +75,6 @@ public:
 
    boost::shared_ptr< GfxApi::Mesh > getMeshPtr();
 
-   std::vector<VertexPositionNormal> m_mdcVertices;
 
 };
 

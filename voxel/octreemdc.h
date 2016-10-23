@@ -19,10 +19,8 @@
 
 enum NodeType : uint8_t
 {
-   None,
    Internal,
-   Leaf,
-   Collapsed
+   Leaf
 };
 
 struct VertexPositionNormal
@@ -36,8 +34,6 @@ class Vertex
 public:
    boost::shared_ptr<Vertex> m_pParent;
    int m_index;
-   bool m_collapsible;
-   QefSolver m_qef;
    float3 m_normal;
    float3 m_position;
    int m_surface_index;
@@ -46,8 +42,10 @@ public:
    int m_euler;
    int m_eis[12];
    int m_in_cell;
+   QefSolver m_qef;
    bool m_face_prop2;
-
+   bool m_collapsible;
+   
    Vertex()
    {
       m_qef.reset();
@@ -65,23 +63,20 @@ public:
 };
 
 
-
 class OctreeNodeMdc
 {
 public:
    int      m_index;
-   int      m_size;
    int32_t  m_childIndex[8];
-   int      m_child_index;
    uint8_t  m_corners;
    NodeType m_type;
    uint8_t  m_gridX;
    uint8_t  m_gridY;
    uint8_t  m_gridZ;
+   uint8_t  m_size;
+   int8_t  m_child_index;
 
    std::vector< boost::shared_ptr< Vertex > > m_vertices;
-
-   //static bool EnforceManifold;
 
    OctreeNodeMdc()
       : m_gridX( 0 )
@@ -95,7 +90,7 @@ public:
    {
       for( int i = 0; i < 8; i++ )
       {
-      m_childIndex[i] = -1;
+         m_childIndex[i] = -1;
       }
    }
 
@@ -112,18 +107,13 @@ public:
       // init childindices to -1 (empty)
       for( int i = 0; i < 8; i++ )
       {
-      m_childIndex[i] = -1;
+         m_childIndex[i] = -1;
       }
    }
 
    void GenerateVertexBuffer( std::vector<VertexPositionNormal>& vertices,
                               std::vector< OctreeNodeMdc >& nodeList )
    {
-
-      if( m_gridX < 2 && m_gridZ < 2 )
-      {
-         m_gridX = m_gridX;
-      }
 
       if( m_type != NodeType::Leaf )
       {
@@ -160,18 +150,6 @@ public:
       }
 
    }
-
-   void ConstructBase( int size, std::vector<  OctreeNodeMdc * >& nodeList, float scale )
-   {
-      m_index = 0;
-      m_size = size;
-      m_type = NodeType::Internal;
-      m_child_index = 0;
-      int n_index = 1;
-      //  ConstructNodes( n_index, nodeList );
-   }
-
-
 
    void ProcessCell( std::vector<unsigned int>& indexes,
                      std::vector<int>& tri_count,
@@ -503,14 +481,6 @@ public:
             continue;
 
          node->ClusterCell( error, nodeList );
-
-         //if( node->m_type == NodeType::Internal ) //Can't cluster if the child has children
-         //   is_collapsible = false;
-         //else
-         //{
-         //   mid_sign = ( node->m_corners >> ( 7 - i ) ) & 1;
-         //   signs[i] = ( node->m_corners >> i ) & 1;
-         //}
       }
 
       int surface_index = 0;
@@ -647,7 +617,7 @@ public:
 
             float err = new_vertex->m_qef.getError();
 
-            //assert( err >= 0 );
+            assert( err >= 0 );
 
             new_vertex->m_collapsible = err <= error;
             new_vertex->m_error = err;
@@ -765,7 +735,11 @@ public:
       }
    }
 
-   void ClusterEdge( int32_t nodes[4], int direction, int& surface_index, std::vector < boost::shared_ptr< Vertex > >& collected_vertices, std::vector< OctreeNodeMdc >& nodeList )
+   void ClusterEdge( int32_t nodes[4],
+                     int direction,
+                     int& surface_index,
+                     std::vector < boost::shared_ptr< Vertex > >& collected_vertices,
+                     std::vector< OctreeNodeMdc >& nodeList )
    {
       if( ( nodes[0] == -1 ||
             nodeList[nodes[0]].m_type != NodeType::Internal ) &&
@@ -800,7 +774,11 @@ public:
       }
    }
 
-   void ClusterIndexes( int32_t nodes[4], int direction, int& max_surface_index, std::vector < boost::shared_ptr< Vertex > >& collected_vertices, std::vector<  OctreeNodeMdc >& nodeList )
+   void ClusterIndexes( int32_t nodes[4],
+                        int direction,
+                        int& max_surface_index,
+                        std::vector < boost::shared_ptr< Vertex > >& collected_vertices,
+                        std::vector<  OctreeNodeMdc >& nodeList )
    {
       if( nodes[0] == -1 &&
           nodes[1] == -1 &&

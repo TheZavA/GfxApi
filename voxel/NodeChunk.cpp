@@ -16,9 +16,6 @@ NodeChunk::NodeChunk( float scale, const AABB& bounds, ChunkManager* pChunkManag
    , m_chunk_bounds( bounds )
    , m_pChunkManager( pChunkManager )
    , m_workInProgress( nullptr )
-   , m_pIndices( nullptr )
-   , m_pVertices( nullptr )
-   , m_pOctreeNodes( nullptr )
    , m_bHasNodes( false )
    , m_nodeIdxCurr( 0 )
    , m_bGenerated( false )
@@ -79,17 +76,14 @@ void NodeChunk::generateFullEdges()
          int target_index = edgeDuplicateIndex[edge_index][y];
 
          if( x1 < 0 || y1 < 0 || z1 < 0 ||
-             x1 > ChunkManager::CHUNK_SIZE + 2 ||
-             y1 > ChunkManager::CHUNK_SIZE + 2 ||
-             z1 > ChunkManager::CHUNK_SIZE + 2 )
+             x1 >= ChunkManager::CHUNK_SIZE  ||
+             y1 >= ChunkManager::CHUNK_SIZE  ||
+             z1 >= ChunkManager::CHUNK_SIZE )
          {
             continue;
          }
 
-         if( x1 == 7 && y1 == 0 && z1 == 0 )
-         {
-            int sdsd = 1;
-         }
+
          cell_t* cell = cellBuffer( x1, y1, z1 );
 
          if( cell == nullptr )
@@ -126,7 +120,7 @@ void NodeChunk::generateFullEdges()
       }
    }
 
-   if( zeroCrossCompact->size() > 0 )
+   if( zeroCrossCompact->size() > 3 )
    {
       m_bHasNodes = true;
 
@@ -224,10 +218,8 @@ void NodeChunk::createMesh()
 
    m_mdcVertices.clear();
    m_indices.clear();
-   m_pVertices.reset();
-   m_pIndices.reset();
    m_zeroCrossCompact.reset();
-   m_pOctreeNodes.reset();
+
 
 }
 
@@ -301,9 +293,9 @@ void NodeChunk::generateZeroCross()
 void NodeChunk::generate( float threshold )
 {
 
-   std::vector< OctreeNodeMdc > octreeNodes( 260000 );
+   std::vector< OctreeNodeMdc > octreeNodes( 40000 );
    m_nodeIdxCurr = 1;
-   ConstructBase( &octreeNodes[0], ChunkManager::CHUNK_SIZE + 1, octreeNodes );
+   ConstructBase( &octreeNodes[0], ChunkManager::CHUNK_SIZE, octreeNodes );
 
    //std::cout << "\n\n";
 
@@ -313,7 +305,12 @@ void NodeChunk::generate( float threshold )
 
    ( &octreeNodes[0] )->ProcessCell( m_indices, m_tri_count, threshold, octreeNodes );
 
+   m_tri_count.clear();
    m_pCellBuffer.reset();
+   m_compactCorners.reset();
+   m_edgesCompact.reset();
+   m_zeroCrossCompact.reset();
+
 
 }
 

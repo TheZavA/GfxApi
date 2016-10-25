@@ -2,10 +2,8 @@
 #define _NODECHUNK_H
 
 #include "../MainClass.h"
-#include "octree.h"
 
 #include "qef.h"
-
 
 #include "TVolume2d.h"
 #include "TVolume3d.h"

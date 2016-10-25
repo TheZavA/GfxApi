@@ -5,8 +5,6 @@
 #include "../MainClass.h"
 
 #include "../cubelib/cube.hpp"
-#include "octree.h"
-
 
 const float QEF_ERROR = 1e-1f;
 const int QEF_SWEEPS = 4;
@@ -42,7 +40,6 @@ void NodeChunk::generateDensities()
                                       m_chunk_bounds.minPoint.z,
                                       m_scale,
                                       tree_level );
-
 }
 
 
@@ -68,21 +65,20 @@ void NodeChunk::generateFullEdges()
       for( int y = 0; y < 4; y++ )
       {
 
-         int edge_index = edgeToIndex[edge.edge];
-         int x1 = edge.grid_pos[0] + edgeDuplicateMask[edge_index][y][0];
-         int y1 = edge.grid_pos[1] + edgeDuplicateMask[edge_index][y][1];
-         int z1 = edge.grid_pos[2] + edgeDuplicateMask[edge_index][y][2];
+         int edge_index = Utilities::edgeToIndex[edge.edge];
+         int x1 = edge.grid_pos[0] + Utilities::edgeDuplicateMask[edge_index][y][0];
+         int y1 = edge.grid_pos[1] + Utilities::edgeDuplicateMask[edge_index][y][1];
+         int z1 = edge.grid_pos[2] + Utilities::edgeDuplicateMask[edge_index][y][2];
 
-         int target_index = edgeDuplicateIndex[edge_index][y];
+         int target_index = Utilities::edgeDuplicateIndex[edge_index][y];
 
          if( x1 < 0 || y1 < 0 || z1 < 0 ||
-             x1 >= ChunkManager::CHUNK_SIZE  ||
-             y1 >= ChunkManager::CHUNK_SIZE  ||
-             z1 >= ChunkManager::CHUNK_SIZE )
+             x1 > ChunkManager::CHUNK_SIZE ||
+             y1 > ChunkManager::CHUNK_SIZE ||
+             z1 > ChunkManager::CHUNK_SIZE )
          {
             continue;
          }
-
 
          cell_t* cell = cellBuffer( x1, y1, z1 );
 
@@ -219,8 +215,6 @@ void NodeChunk::createMesh()
    m_mdcVertices.clear();
    m_indices.clear();
    m_zeroCrossCompact.reset();
-
-
 }
 
 
@@ -297,8 +291,6 @@ void NodeChunk::generate( float threshold )
    m_nodeIdxCurr = 1;
    ConstructBase( &octreeNodes[0], ChunkManager::CHUNK_SIZE, octreeNodes );
 
-   //std::cout << "\n\n";
-
    ( &octreeNodes[0] )->ClusterCellBase( threshold, octreeNodes );
 
    ( &octreeNodes[0] )->GenerateVertexBuffer( m_mdcVertices, octreeNodes );
@@ -310,8 +302,6 @@ void NodeChunk::generate( float threshold )
    m_compactCorners.reset();
    m_edgesCompact.reset();
    m_zeroCrossCompact.reset();
-
-
 }
 
 void NodeChunk::ConstructBase( OctreeNodeMdc * pNode, int size, std::vector< OctreeNodeMdc >& nodeList )
@@ -366,24 +356,10 @@ bool NodeChunk::ConstructLeaf( OctreeNodeMdc * pNode, int& index )
 
    pNode->m_index = index++;
    pNode->m_type = NodeType::Leaf;
-
- /*  float3 worldpos = this->m_chunk_bounds.minPoint + float3( pNode->m_gridX, pNode->m_gridY, pNode->m_gridZ ) * this->m_scale;
-
-   int testCorner = 0;
-   for( int i = 0; i < 8; i++ )
-   {
-      if( worldpos.y + ( float ) Utilities::TCornerDeltas[i][1] * this->m_scale < 400 )
-         testCorner |= 1 << i;
-   }
-
-*/
-
+   
    auto& cellBuffer = ( *m_pCellBuffer );
    cell_t* cell = cellBuffer( pNode->m_gridX, pNode->m_gridY, pNode->m_gridZ );
-
-   //if( testCorner != 0 && testCorner != 255 )
-   //   assert( cell != nullptr ) ;
-
+   
    if( cell == nullptr )
       return false;
 
@@ -391,12 +367,6 @@ bool NodeChunk::ConstructLeaf( OctreeNodeMdc * pNode, int& index )
    
    if( pNode->m_corners == 0 || pNode->m_corners == 255 )
       return false;
-
-
-
-   //std::cout << std::to_string( pNode->m_gridX ) << " " << std::to_string( pNode->m_gridY )  << " " << std::to_string( pNode->m_gridZ ) << "|";
-
-   //m_bHasNodes = true;
 
    // the edges corresponding to each vertex
    int8_t v_edges[4][12]; 
@@ -445,7 +415,6 @@ bool NodeChunk::ConstructLeaf( OctreeNodeMdc * pNode, int& index )
                              cell->positions[index1][1],
                              cell->positions[index1][2],
                              no.x, no.y, no.z );
-
          k++;
       }
 
@@ -461,7 +430,6 @@ bool NodeChunk::ConstructLeaf( OctreeNodeMdc * pNode, int& index )
       pVertex->m_in_cell = pNode->m_child_index;
       pVertex->m_face_prop2 = true;
       pNode->m_vertices.push_back( pVertex );
-
 
    }
 

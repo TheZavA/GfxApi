@@ -62,9 +62,6 @@
     <ClInclude Include="voxel\qef.h">
       <Filter>voxel</Filter>
     </ClInclude>
-    <ClInclude Include="voxel\octree.h">
-      <Filter>voxel</Filter>
-    </ClInclude>
     <ClInclude Include="voxel\ChunkManager.h">
       <Filter>voxel</Filter>
     </ClInclude>
@@ -107,9 +104,6 @@
     <ClCompile Include="voxel\qef.cpp">
       <Filter>voxel</Filter>
     </ClCompile>
-    <ClCompile Include="voxel\octree.cpp">
-      <Filter>voxel</Filter>
-    </ClCompile>
     <ClCompile Include="voxel\ChunkManager.cpp">
       <Filter>voxel</Filter>
     </ClCompile>
@@ -131,15 +125,11 @@
     <None Include="shader\chunk.ps">
       <Filter>shader</Filter>
     </None>
-    <None Include="..\OpenGI\lib\OpenGI.exp" />
     <None Include="chunk_kernel.cl">
       <Filter>cl_programs</Filter>
     </None>
     <None Include="scan_kernel.cl">
       <Filter>cl_programs</Filter>
     </None>
-  </ItemGroup>
-  <ItemGroup>
-    <Library Include="..\OpenGI\lib\OpenGI.lib" />
   </ItemGroup>
 </Project>

@@ -207,10 +207,10 @@ float QefSolver::getError( const Vec3 &pos )
 
    Vec3 atax;
    MatUtils::vmul_symmetric( atax, this->ata, pos );
-   assert( VecUtils::dot( pos, atax ) > 0 );
+   //assert( VecUtils::dot( pos, atax ) > 0 );
    float err = VecUtils::dot( pos, atax ) - 2 * VecUtils::dot( pos, this->atb )
       + this->data.btb;
-   assert( err >= 0 );
+   //assert( err >= 0 );
    return err;
    //return err < 0 ? 0 : err;
 }

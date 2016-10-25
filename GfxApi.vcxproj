@@ -101,7 +101,6 @@
     <ClInclude Include="voxel\ChunkManager.h" />
     <ClInclude Include="voxel\common.h" />
     <ClInclude Include="voxel\NodeChunk.h" />
-    <ClInclude Include="voxel\octree.h" />
     <ClInclude Include="voxel\octreemdc.h" />
     <ClInclude Include="voxel\qef.h" />
     <ClInclude Include="voxel\svd.h" />
@@ -122,20 +121,15 @@
     <ClCompile Include="tinyxml2\tinyxml2.cpp" />
     <ClCompile Include="voxel\ChunkManager.cpp" />
     <ClCompile Include="voxel\NodeChunk.cpp" />
-    <ClCompile Include="voxel\octree.cpp" />
     <ClCompile Include="voxel\qef.cpp" />
     <ClCompile Include="voxel\svd.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\OpenGI\lib\OpenGI.exp" />
     <None Include="chunk_kernel.cl" />
     <None Include="noisetest.cl" />
     <None Include="scan_kernel.cl" />
     <None Include="shader\chunk.ps" />
     <None Include="shader\chunk.vs" />
-  </ItemGroup>
-  <ItemGroup>
-    <Library Include="..\OpenGI\lib\OpenGI.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

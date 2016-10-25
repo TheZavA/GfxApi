@@ -230,6 +230,8 @@ void ChunkManager::updateLoDTree( Frustum& camera )
          continue;
       }
 
+      chunk->m_bGenerated = true;
+
       if( chunk->m_bHasNodes )
       {
          chunk->createMesh();
@@ -284,123 +286,23 @@ void ChunkManager::updateLoDTree( Frustum& camera )
 
    NodeChunks::iterator w = m_visibles.begin();
 
-   //while( w != m_visibles.end() )
-   //{
-   //   chunkQueue.push_back( *w );
-   //   ++w;
-   //}
-
-   //w = m_visibles.begin();
-
-   //m_visibles.clear();
-
-   //while( chunkQueue.size() > 0 )
-   //{
-   //   auto chunk = chunkQueue.front();
-   //   chunkQueue.pop_front();
-
-   //   ChunkTree* leaf = chunk->m_pTree.get();
-   //   ChunkTree* parent = leaf->getParent();
-
-   //   bool parent_acceptable_error = !parent->isRoot() && isAcceptablePixelError( camera.pos, *parent );
-   //   bool acceptable_error = isAcceptablePixelError( camera.pos, *leaf );
-
-   //   if( parent_acceptable_error )
-   //   {
-   //      uint8_t parent_level = parent->getLevel();
-   //      /// Add the parent to visibles
-   //      //m_visibles.insert( parent->getValue() );
-   //      ( *scene_next )[parent_level].insert( parent->getValue() );
-
-   //      if( leaf->hasChildren() )
-   //      {
-   //         for( auto& corner : cube::corner_t::all() )
-   //         {
-   //            if( leaf->getChild( corner )->hasChildren() )
-   //            {
-   //               for( auto& c_corner : cube::corner_t::all() )
-   //               {
-   //                  auto c_child = leaf->getChild( corner )->getChild( c_corner );
-   //                  if( c_child->getValue() )
-   //                     c_child->getValue()->m_pTree.reset();
-   //               }
-   //               leaf->getChild( corner )->join();
-   //            }
-   //         }
-   //      }
-   //   }
-   //   else if( acceptable_error )
-   //   {
-   //      /// Let things stay the same
-   //      //m_visibles.insert( leaf->getValue() );
-   //      ( *scene_next )[leaf->getLevel()].insert( leaf->getValue() );
-   //   }
-   //   else
-   //   {
-   //      //if( leaf->getValue()->m_bHasNodes )
-   //      {
-
-   //         /// If visible doesn't have children
-   //         if( !leaf->hasChildren() )
-   //         {
-   //            /// Create children for visible
-   //            leaf->split();
-   //            for( auto& corner : cube::corner_t::all() )
-   //            {
-   //               initTreeNoQueue( leaf->getChild( corner ) );
-   //               //m_chunks_pending++;
-   //               chunkQueue.push_back( leaf->getChild( corner )->getValue() );
-   //            }
-   //         }
-
-   //         /// Foreach child of visible
-   //         for( auto& corner : cube::corner_t::all() )
-   //         {
-   //            uint8_t level = leaf->getChild( corner )->getLevel();
-   //            //m_visibles.insert( leaf->getChild( corner )->getValue() );
-   //            if( isAcceptablePixelError( camera.pos, *leaf->getChild( corner ) ) )
-   //            {
-
-   //               //if( leaf->getValue()->m_occupation[corner.x_i()][corner.y_i()][corner.z_i()] )
-   //               {
-   //                  initTree( leaf->getChild( corner ) );
-   //                  m_chunks_pending++;
-   //                  ( *scene_next )[level].insert( leaf->getChild( corner )->getValue() );
-   //               }
-
-   //            }
-   //            else
-   //            {
-   //               int test = 0;
-   //               //
-   //            }
-
-   //         }
-   //      }
-   //   }
-
-
-   //      
-   //}
-
-   // loop through the current visible nodes, act accordingly
    while( w != m_visibles.end() )
    {
-      if( !( *w )->m_pTree )
-      {
-         ++w;
-         continue;
-      }
+      chunkQueue.push_back( *w );
+      ++w;
+   }
 
-      ChunkTree* leaf = ( *w )->m_pTree.get();
+   w = m_visibles.begin();
+
+   m_visibles.clear();
+
+   while( chunkQueue.size() > 0 )
+   {
+      auto chunk = chunkQueue.front();
+      chunkQueue.pop_front();
+
+      ChunkTree* leaf = chunk->m_pTree.get();
       ChunkTree* parent = leaf->getParent();
-      // If this is the root node, just move on.
-      if( !parent )
-      {
-         ++w;
-         continue;
-      }
-
 
       bool parent_acceptable_error = !parent->isRoot() && isAcceptablePixelError( camera.pos, *parent );
       bool acceptable_error = isAcceptablePixelError( camera.pos, *leaf );
@@ -428,21 +330,16 @@ void ChunkManager::updateLoDTree( Frustum& camera )
                }
             }
          }
-
-         std::set< boost::shared_ptr<NodeChunk> >::iterator e = w;
-         ++w;
-         m_visibles.erase( e );
-         continue;
-
       }
       else if( acceptable_error )
       {
          /// Let things stay the same
+         m_visibles.insert( leaf->getValue() );
          ( *scene_next )[leaf->getLevel()].insert( leaf->getValue() );
       }
       else
       {
-         //if( leaf->getValue()->m_bHasNodes )
+         if( leaf->getValue()->m_bHasNodes )
          {
 
             /// If visible doesn't have children
@@ -452,37 +349,149 @@ void ChunkManager::updateLoDTree( Frustum& camera )
                leaf->split();
                for( auto& corner : cube::corner_t::all() )
                {
-                  initTreeNoQueue( leaf->getChild( corner ) );
-                  //m_chunks_pending++;
+                  
+                  uint8_t level = leaf->getChild( corner )->getLevel();
+                  //m_visibles.insert( leaf->getChild( corner )->getValue() );
+                  //initTreeNoQueue( leaf->getChild( corner ) );
+                  ////m_chunks_pending++;
+                  //chunkQueue.push_back( leaf->getChild( corner )->getValue() );
+                  initTree( leaf->getChild( corner ) );
+                  m_chunks_pending++;
+                  ( *scene_next )[level].insert( leaf->getChild( corner )->getValue() );
+                  m_visibles.insert( leaf->getChild( corner )->getValue() );
                }
             }
 
             /// Foreach child of visible
-            for( auto& corner : cube::corner_t::all() )
-            {
-               uint8_t level = leaf->getChild( corner )->getLevel();
-               m_visibles.insert( leaf->getChild( corner )->getValue() );
-               if( isAcceptablePixelError( camera.pos, *leaf->getChild( corner ) ) )
-               {
+            //for( auto& corner : cube::corner_t::all() )
+            //{
+            //   uint8_t level = leaf->getChild( corner )->getLevel();
+            //   m_visibles.insert( leaf->getChild( corner )->getValue() );
+            //   if( isAcceptablePixelError( camera.pos, *leaf->getChild( corner ) ) )
+            //   {
 
-                  initTree( leaf->getChild( corner ) );
-                  m_chunks_pending++;
-                  ( *scene_next )[level].insert( leaf->getChild( corner )->getValue() );
-                  
-               }
+            //      //if( leaf->getValue()->m_occupation[corner.x_i()][corner.y_i()][corner.z_i()] )
+            //      {
+            //         initTree( leaf->getChild( corner ) );
+            //         m_chunks_pending++;
+            //         ( *scene_next )[level].insert( leaf->getChild( corner )->getValue() );
+            //      }
 
-            }
+            //   }
+            //   else
+            //   {
+            //      int test = 0;
+            //      //
+            //   }
 
-            /// Remove visible from visibles
-            std::set< boost::shared_ptr<NodeChunk> >::iterator e = w;
-            ++w;
-            m_visibles.erase( e );
-            continue;
-
+            //}
          }
       }
-      ++w;
+
+
+         
    }
+
+   //// loop through the current visible nodes, act accordingly
+   //while( w != m_visibles.end() )
+   //{
+   //   if( !( *w )->m_pTree )
+   //   {
+   //      ++w;
+   //      continue;
+   //   }
+
+   //   ChunkTree* leaf = ( *w )->m_pTree.get();
+   //   ChunkTree* parent = leaf->getParent();
+   //   // If this is the root node, just move on.
+   //   if( !parent )
+   //   {
+   //      ++w;
+   //      continue;
+   //   }
+
+
+   //   bool parent_acceptable_error = !parent->isRoot() && isAcceptablePixelError( camera.pos, *parent );
+   //   bool acceptable_error = isAcceptablePixelError( camera.pos, *leaf );
+
+   //   if( parent_acceptable_error )
+   //   {
+   //      uint8_t parent_level = parent->getLevel();
+   //      /// Add the parent to visibles
+   //      m_visibles.insert( parent->getValue() );
+   //      ( *scene_next )[parent_level].insert( parent->getValue() );
+
+   //      if( leaf->hasChildren() )
+   //      {
+   //         for( auto& corner : cube::corner_t::all() )
+   //         {
+   //            if( leaf->getChild( corner )->hasChildren() )
+   //            {
+   //               for( auto& c_corner : cube::corner_t::all() )
+   //               {
+   //                  auto c_child = leaf->getChild( corner )->getChild( c_corner );
+   //                  if( c_child->getValue() )
+   //                     c_child->getValue()->m_pTree.reset();
+   //               }
+   //               leaf->getChild( corner )->join();
+   //            }
+   //         }
+   //      }
+
+   //      std::set< boost::shared_ptr<NodeChunk> >::iterator e = w;
+   //      ++w;
+   //      m_visibles.erase( e );
+   //      continue;
+
+   //   }
+   //   else if( acceptable_error )
+   //   {
+   //      /// Let things stay the same
+   //      ( *scene_next )[leaf->getLevel()].insert( leaf->getValue() );
+   //   }
+   //   else
+   //   {
+   //      //if( leaf->getValue()->m_bHasNodes )
+   //      {
+
+   //         /// If visible doesn't have children
+   //         if( !leaf->hasChildren() )
+   //         {
+   //            /// Create children for visible
+   //            leaf->split();
+   //            for( auto& corner : cube::corner_t::all() )
+   //            {
+   //               initTreeNoQueue( leaf->getChild( corner ) );
+   //               //m_chunks_pending++;
+   //            }
+   //         }
+
+   //         /// Foreach child of visible
+   //         for( auto& corner : cube::corner_t::all() )
+   //         {
+   //            uint8_t level = leaf->getChild( corner )->getLevel();
+   //            m_visibles.insert( leaf->getChild( corner )->getValue() );
+   //            if( isAcceptablePixelError( camera.pos, *leaf->getChild( corner ) ) )
+   //            {
+
+   //               initTree( leaf->getChild( corner ) );
+   //               m_chunks_pending++;
+   //               ( *scene_next )[level].insert( leaf->getChild( corner )->getValue() );
+   //               
+   //            }
+
+   //         }
+
+   //         /// Remove visible from visibles
+   //         std::set< boost::shared_ptr<NodeChunk> >::iterator e = w;
+   //         ++w;
+   //         m_visibles.erase( e );
+   //         continue;
+
+   //      }
+   //   }
+   //   ++w;
+   //}
 
    /// finally set the next scene to the new scene
    m_scene_next = scene_next;
@@ -788,10 +797,6 @@ void ChunkManager::chunkLoaderThread()
          //std::cout << "processing" << '\n';
          m_nodeChunkContourGeneratorQueue.push( chunk );
 
-
-
-
-
          did_some_work = true;
 
       }
@@ -822,7 +827,7 @@ void ChunkManager::chunkContourThread()
 
       did_some_work = false;
 
-      std::size_t max_chunks_per_frame = 12;
+      std::size_t max_chunks_per_frame = 5;
 
       for( std::size_t i = 0; i < max_chunks_per_frame; ++i )
       {
@@ -830,9 +835,7 @@ void ChunkManager::chunkContourThread()
          auto& chunk = m_nodeChunkContourGeneratorQueue.pop();
 
          if( !chunk )
-         {
             continue;
-         }
 
          assert( chunk->m_zeroCrossCompact != 0 );
          auto t11 = Clock::now();

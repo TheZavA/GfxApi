@@ -37,7 +37,6 @@ public:
    float3 m_normal;
    float3 m_position;
    int m_surface_index;
-   //Vector3 Position{ get{ if( qef != null ) return qef.Solve( 1e-6f, 4, 1e-6f ); return Vector3.Zero; } }
    float m_error;
    int m_euler;
    int m_eis[12];
@@ -360,7 +359,7 @@ public:
          boost::shared_ptr<Vertex> highest = v;
          while( highest->m_pParent != nullptr )
          {
-            //assert( highest->m_pParent->m_error >= 0 );
+           // assert( highest->m_pParent->m_error >= 0 );
             if( ( highest->m_pParent->m_error <= threshold
                        && ( ( highest->m_pParent->m_euler == 1 && highest->m_pParent->m_face_prop2 ) ) ) )
             {
@@ -617,7 +616,7 @@ public:
 
             float err = new_vertex->m_qef.getError();
 
-            assert( err >= 0 );
+           // assert( err >= 0 );
 
             new_vertex->m_collapsible = err <= error;
             new_vertex->m_error = err;
@@ -777,8 +776,8 @@ public:
    void ClusterIndexes( int32_t nodes[4],
                         int direction,
                         int& max_surface_index,
-                        std::vector < boost::shared_ptr< Vertex > >& collected_vertices,
-                        std::vector<  OctreeNodeMdc >& nodeList )
+                        std::vector< boost::shared_ptr< Vertex > >& collected_vertices,
+                        std::vector< OctreeNodeMdc >& nodeList )
    {
       if( nodes[0] == -1 &&
           nodes[1] == -1 &&

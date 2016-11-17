@@ -68,6 +68,11 @@ public:
    void initTree( boost::shared_ptr<ChunkTree> pChild );
    void initTreeNoQueue( boost::shared_ptr<ChunkTree> pChild );
 
+   uint32_t createOctree( std::vector<uint32_t>& leaf_indices,
+                          std::vector<OctreeNodeMdc>& node_list,
+                          const float threshold,
+                          int32_t& node_counter );
+
    boost::shared_ptr< ocl_t > m_ocl;
 
    void render( void );

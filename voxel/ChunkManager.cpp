@@ -202,7 +202,7 @@ bool ChunkManager::isAcceptablePixelError( float3& cameraPos, ChunkTree& tree )
 
    //All nodes within this distance will surely be rendered
    //float f_0 = x_0 * 1.9f;
-   float f_0 = x_0 * 1.5f;
+   float f_0 = x_0 * 1.9f;
 
    float3 delta = cameraPos - box.CenterPoint();
    //Node distance from camera
@@ -519,14 +519,7 @@ void ChunkManager::updateLoDTree2( Frustum& camera )
       }
    }
 
-
-   /// create a new empty scene
-   //auto scene_next = boost::make_shared <LODScene>( ChunkManager::MAX_LOD_LEVEL + 6 );
-
-   //std::deque< boost::shared_ptr< NodeChunk > > chunkQueue;
-
    NodeChunks::iterator w = m_visibles.begin();
-
 
    // loop through the current visible nodes, act accordingly
    while( w != m_visibles.end() )
@@ -548,6 +541,7 @@ void ChunkManager::updateLoDTree2( Frustum& camera )
 
       ChunkTree* leaf = ( *w )->m_pTree.get();
       ChunkTree* parent = leaf->getParent();
+
       // If this is the root node, just move on.
       if( !parent )
       {
@@ -605,48 +599,36 @@ void ChunkManager::updateLoDTree2( Frustum& camera )
                /// Foreach child of visible
             }
 
-               for( auto& corner : cube::corner_t::all() )
-               {
-
-                  auto& chunkRef = leaf->getChild( corner );
-                  //if( isAcceptablePixelError( camera.pos, *leaf->getChild( corner ) ) )
-                  {
-                     initTree( chunkRef );
-                     m_visibles.insert( chunkRef->getValue() );
-                     m_visiblesTemp.insert( leaf->getValue() );
-                  }
-               }
-            
-   
+            for( auto& corner : cube::corner_t::all() )
             {
-               //if( allNodesGenerated )
-               {
-                  /// Remove visible from visibles
-                  
-                  std::set< boost::shared_ptr<NodeChunk> >::iterator e = w;
-                  ++w;
-                  m_visibles.erase( e );
-                  continue;
-               }
+
+               auto& chunkRef = leaf->getChild( corner );
+
+               initTree( chunkRef );
+               m_visibles.insert( chunkRef->getValue() );
+               m_visiblesTemp.insert( leaf->getValue() );
+
             }
+               
+            std::set< boost::shared_ptr<NodeChunk> >::iterator e = w;
+            ++w;
+            m_visibles.erase( e );
+            continue;
+
 
          }
       }
       ++w;
    }
 
-   /// finally set the next scene to the new scene
-   //m_scene_next = scene_next;
-
-
    NodeChunks::iterator w1 = m_visiblesTemp.begin();
-
 
    // loop through the current visible nodes, act accordingly
    while( w1 != m_visiblesTemp.end() )
    {
       ChunkTree* leaf = ( *w1 )->m_pTree.get();
       ChunkTree* parent = leaf->getParent();
+
       // If this is the root node, just move on.
       if( !parent )
       {
@@ -686,6 +668,90 @@ void ChunkManager::updateLoDTree2( Frustum& camera )
 }
 
 
+int toint2( uint8_t x, uint8_t y, uint8_t z )
+{
+   int index = 0;
+   ( ( char* ) ( &index ) )[0] = x;
+   ( ( char* ) ( &index ) )[1] = y;
+   ( ( char* ) ( &index ) )[2] = z;
+   return index;
+}
+
+uint32_t ChunkManager::createOctree( std::vector< uint32_t >& leaf_indices,
+                                     std::vector< OctreeNodeMdc >& node_list,
+                                     const float threshold,
+                                     int32_t& node_counter )
+{
+
+   int index = 0;
+
+   while( leaf_indices.size() > 1 )
+   {
+
+      std::vector< uint32_t > tmp_idx_vec;
+      std::unordered_map< int, uint32_t > tmp_map;
+      for( auto& nodeIdx : leaf_indices )
+      {
+         auto& node = node_list[nodeIdx];
+         OctreeNodeMdc* new_node = nullptr;
+
+         boost::array<int, 3> pos;
+
+         int level = node.m_size * 2;
+
+         uint16_t node_min_x = node.m_gridX;
+         uint16_t node_min_y = node.m_gridY;
+         uint16_t node_min_z = node.m_gridZ;
+
+         pos[0] = ( node_min_x / level ) * level;
+         pos[1] = ( node_min_y / level ) * level;
+         pos[2] = ( node_min_z / level ) * level;
+
+         auto& it = tmp_map.find( toint2( pos[0], pos[1], pos[2] ) );
+         if( it == tmp_map.end() )
+         {
+            uint32_t index = node_counter;
+            if( node_counter >= node_list.size() )
+               node_list.push_back( OctreeNodeMdc() );
+
+            new_node = &node_list[node_counter++];
+            new_node->m_type = NodeType::Internal;
+            new_node->m_size = level;
+            new_node->m_gridX = pos[0];
+            new_node->m_gridY = pos[1];
+            new_node->m_gridZ = pos[2];
+            tmp_map[toint2( pos[0], pos[1], pos[2] )] = index;
+
+            tmp_idx_vec.push_back( index );
+         }
+         else
+         {
+            new_node = &node_list[it->second];
+         }
+
+         boost::array<int, 3> diff;
+         diff[0] = pos[0] - node_min_x;
+         diff[1] = pos[1] - node_min_y;
+         diff[2] = pos[2] - node_min_z;
+
+         float3 corner_pos = float3( diff[0] ? 1 : 0, diff[1] ? 1 : 0, diff[2] ? 1 : 0 );
+
+         uint8_t idx = ( ( uint8_t ) corner_pos.x << 2 ) | ( ( uint8_t ) corner_pos.y << 1 ) | ( ( uint8_t ) corner_pos.z );
+
+         new_node->m_childIndex[idx] = nodeIdx;
+
+      }
+      leaf_indices.swap( tmp_idx_vec );
+   }
+
+
+   if( leaf_indices.size() == 0 )
+      return -1;
+
+   return leaf_indices[0];
+
+}
+
 void ChunkManager::chunkLoaderThread()
 {
    //this has to be in ms or something, not framerate, but time!
@@ -702,7 +768,7 @@ void ChunkManager::chunkLoaderThread()
 
       std::size_t max_chunks_per_frame = 5;
 
-      for( std::size_t i = 0; i < 30; ++i )
+      for( std::size_t i = 0; i < max_chunks_per_frame; ++i )
       {
 
          auto& chunk = m_nodeChunkClassifyQueue.pop();
@@ -713,9 +779,6 @@ void ChunkManager::chunkLoaderThread()
          }
 
          auto parent = chunk->m_pTree->getParent();
-
-         //if( !parent )
-         // break;
 
          if( !parent->isRoot() && !parent->getValue()->m_bClassified )
          {
@@ -743,36 +806,21 @@ void ChunkManager::chunkLoaderThread()
          auto& chunk = m_nodeChunkGeneratorQueue.pop();
 
          if( !chunk )
-         {
             continue;
-         }
 
          auto parent = chunk->m_pTree->getParent();
 
-         //if( !parent )
-           // break;
-
-         //std::vector<boost::chrono::duration<int_least64_t, boost::nano>> times;
-
-         ////auto t1 = Clock::now();
          chunk->generateDensities();
-         ////auto t22 = Clock::now();
-         ////times.push_back( t22 - t1 );
-
-         ////auto t11 = Clock::now();
          chunk->classifyEdges();
-         ////auto t222 = Clock::now();
-         ////times.push_back( t222 - t11 );
 
          chunk->m_bClassified = true;
 
-         //continue;
-
-         if( chunk->m_bHasNodes /*&& chunk->m_edgesCompact && chunk->m_edgesCompact->size() > 0*/ )
+         if( chunk->m_bHasNodes )
          {
             chunk->generateZeroCross();
             chunk->generateFullEdges();
          }
+
          if( !chunk->m_bHasNodes )
          {
             chunk->m_edgesCompact.reset();
@@ -780,21 +828,9 @@ void ChunkManager::chunkLoaderThread()
             chunk->m_pCellBuffer.reset();
             did_some_work = true;
             m_nodeChunkMeshGeneratorQueue.push( chunk );
-
-            // auto t2 = Clock::now();
-            // times.push_back( t2 - t1 );
-
-             /*   for( auto& entry : times )
-                {
-                   std::cout << entry << "_\n";
-                }
-
-                std::cout << "====" << '\n';*/
-
             continue;
          }
 
-         //std::cout << "processing" << '\n';
          m_nodeChunkContourGeneratorQueue.push( chunk );
 
          did_some_work = true;
@@ -807,7 +843,6 @@ void ChunkManager::chunkLoaderThread()
          std::this_thread::sleep_for( frametime / 10 );
       }
 
-
    }
 
 }
@@ -817,8 +852,6 @@ void ChunkManager::chunkContourThread()
    typedef boost::chrono::high_resolution_clock Clock;
 
    //this has to be in ms or something, not framerate, but time!
-   //int frameRate = 60;
-   typedef boost::chrono::high_resolution_clock Clock;
    //60 fps is ~15 ms / frame
    std::chrono::milliseconds frametime( 25 );
    bool did_some_work = false;
@@ -838,8 +871,7 @@ void ChunkManager::chunkContourThread()
             continue;
 
          assert( chunk->m_zeroCrossCompact != 0 );
-         auto t11 = Clock::now();
-
+         
          chunk->generate( -1.0f );
 
          chunk->m_edgesCompact.reset();
@@ -850,7 +882,6 @@ void ChunkManager::chunkContourThread()
          m_nodeChunkMeshGeneratorQueue.push( chunk );
 
          did_some_work = true;
-         auto t2 = Clock::now();
       }
 
       if( !did_some_work )

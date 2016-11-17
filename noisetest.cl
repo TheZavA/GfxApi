@@ -1318,7 +1318,7 @@ float densities3d(float3 pos, uchar level)
 {
     
    //return pos.y < 400 ? -1 : 1;
-   //return sphereFunction((float4)(pos.x, pos.y, pos.z, 0.0f)) - 200000335.f ;
+   return sphereFunction((float4)(pos.x, pos.y, pos.z, 0.0f)) - 200000335.f ;
    float3 mod_pos = pos * 0.001f;
    //level = 14;
 	     
@@ -1327,7 +1327,7 @@ float densities3d(float3 pos, uchar level)
 
    float baseMountain = fBM((float2)(mod_pos.x - 2000, mod_pos.z), 0.016f, 2.19f, min((int)(level), 3));
    float billow = fBM((float2)(mod_pos.x - 4000, mod_pos.z), 0.009f, 2.19f,  min((int)(level), 5));
-   float detail = fabs(ridgedmultifractal3d((float4)(mod_pos.x - 14000, mod_pos.y, mod_pos.z - 8000, 0), 0.015, 2.233, 0, min((int)(level), 12)));
+   float detail = fabs(ridgedmultifractal2d((float2)(mod_pos.x - 14000, mod_pos.z - 8000), 0.045, 2.233, 0, min((int)(level), 12)));
 
    if( pos.y > 900 )
    {

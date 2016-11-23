@@ -1496,6 +1496,10 @@ namespace GfxApi {
 				glDrawArrays(GL_POINTS, 0, m_numVertices);
 				checkOpenGLError();
 				break;
+         case PrimitiveType::TriangleStrip:
+            glDrawArrays( GL_TRIANGLE_STRIP, 0, m_numVertices );
+            checkOpenGLError();
+            break;
 			default: {
 				assert(false);
 			}

@@ -20,6 +20,16 @@ static __constant int3 CHILD_MIN_OFFSETS[8] =
     (int3)( 1, 1, 1 )
 };
 
+static __constant int3 FACE_OFFSETS[6] =
+{
+    (int3)( 1, 0, 0 ), 
+    (int3)( -1, 0, 0 ), 
+    (int3)( 0, 0, 1 ), 
+    (int3)( 0, 0, -1 ), 
+    (int3)( 0, 1, 0 ), 
+    (int3)( 0, -1, 0 )
+};
+
 static __constant int3 CORNER_OFFSETS[3] =
 {
 	// needs to match the vertMap from Dual Contouring impl
@@ -1318,7 +1328,7 @@ float densities3d(float3 pos, uchar level)
 {
     
    //return pos.y < 400 ? -1 : 1;
-   return sphereFunction((float4)(pos.x, pos.y, pos.z, 0.0f)) - 200000335.f ;
+  // return sphereFunction((float4)(pos.x, pos.y, pos.z, 0.0f)) - 200000335.f ;
    float3 mod_pos = pos * 0.001f;
    //level = 14;
 	     

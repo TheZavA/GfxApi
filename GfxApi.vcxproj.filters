@@ -88,9 +88,6 @@
     <ClInclude Include="voxel\utilities.h">
       <Filter>voxel</Filter>
     </ClInclude>
-    <ClInclude Include="voxel\octreemdc.h">
-      <Filter>voxel</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="tinyxml2\tinyxml2.cpp">

@@ -11,12 +11,24 @@
 #include "TOctree.h"
 #include "common.h"
 
-#include "octreemdc.h"
-
 #include <unordered_map>
 #include <atomic>
 
 class ChunkManager;
+
+struct VertexPosition
+{
+   VertexPosition( float x, float y, float z )
+   {
+      px = x;
+      py = y;
+      pz = z;
+   }
+
+   float px;
+   float py;
+   float pz;
+};
 
 class NodeChunk
 {
@@ -35,41 +47,27 @@ public:
 
    AABB m_chunk_bounds;
 
-   boost::shared_ptr < TVolume3d<cell_t*> > m_pCellBuffer;
-
-   boost::shared_ptr< std::vector< cl_int4_t > > m_compactCorners;
-   boost::shared_ptr< std::vector< edge_t > > m_edgesCompact;
-   boost::shared_ptr< std::vector< cell_t > > m_zeroCrossCompact;
-
    boost::shared_ptr< GfxApi::Mesh > m_pMesh;
 
-   std::vector<unsigned int> m_indices;
-   std::vector<int> m_tri_count;
+   std::vector< unsigned int > m_indices;
+   std::vector< int > m_tri_count;
 
-   std::vector<VertexPositionNormal> m_mdcVertices;
+   std::vector< VertexPosition > m_vertices;
 
    boost::shared_ptr< TOctree< boost::shared_ptr< NodeChunk > > > m_pTree;
-
-   int32_t m_nodeIdxCurr;
+   boost::shared_ptr< std::vector<cl_block_info_t> > m_compactedBlocks;
 
    NodeChunk( float scale, const AABB& bounds, ChunkManager* pChunkManager, bool hasNodes = false );
 
    ~NodeChunk();
 
-   void ConstructBase( OctreeNodeMdc * pNode, int size, std::vector< OctreeNodeMdc >& nodeList );
-   bool ConstructNodes( OctreeNodeMdc * pNode, int& n_index, std::vector<  OctreeNodeMdc >& nodeList );
-   bool ConstructLeaf( OctreeNodeMdc * pNode, int& index );
-
    void generate( float threshold );
 
    void createMesh();
 
-   void classifyEdges();
-   void generateZeroCross();
-
    void generateDensities();
 
-   void generateFullEdges();
+   void classifyBlocks();
 
    boost::shared_ptr< GfxApi::Mesh > getMeshPtr();
 

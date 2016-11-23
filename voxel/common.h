@@ -67,11 +67,11 @@ struct edge_t
 	uint8_t material;
 };
 
-typedef struct cl_edge_info
+typedef struct cl_block_info
 {
     uint8_t grid_pos[3];
-    uint8_t edge_info;
-} cl_edge_info_t;
+    uint8_t block_info;
+} cl_block_info_t;
 
 typedef struct textureTreeNode
 {

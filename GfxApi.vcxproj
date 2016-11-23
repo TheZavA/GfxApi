@@ -101,7 +101,6 @@
     <ClInclude Include="voxel\ChunkManager.h" />
     <ClInclude Include="voxel\common.h" />
     <ClInclude Include="voxel\NodeChunk.h" />
-    <ClInclude Include="voxel\octreemdc.h" />
     <ClInclude Include="voxel\qef.h" />
     <ClInclude Include="voxel\svd.h" />
     <ClInclude Include="voxel\TBorderVolume3d.h" />

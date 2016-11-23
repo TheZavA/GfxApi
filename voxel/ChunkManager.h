@@ -14,7 +14,6 @@
 #include "TOctree.h"
 #include "TQueueLocked.h"
 #include "TVolume3d.h"
-#include "octreemdc.h"
 
 class NodeChunk;
 
@@ -31,7 +30,7 @@ public:
    ~ChunkManager( void );
 
    static const int CHUNK_SIZE = 32;
-   static const int MAX_LOD_LEVEL = 12;
+   static const int MAX_LOD_LEVEL = 7;
 
    static const int WORLD_BOUNDS_MIN_XZ = -512000;
    static const int WORLD_BOUNDS_MIN_Y = -512000;
@@ -45,6 +44,7 @@ public:
    boost::shared_ptr < TVolume3d<cell_t*> > m_pCellBuffer;
 
    boost::shared_ptr< ChunkTree > m_pOctTree;
+
 
    NodeChunks m_visibles;
 
@@ -67,11 +67,6 @@ public:
    void initTree( ChunkTree& pChild );
    void initTree( boost::shared_ptr<ChunkTree> pChild );
    void initTreeNoQueue( boost::shared_ptr<ChunkTree> pChild );
-
-   uint32_t createOctree( std::vector<uint32_t>& leaf_indices,
-                          std::vector<OctreeNodeMdc>& node_list,
-                          const float threshold,
-                          int32_t& node_counter );
 
    boost::shared_ptr< ocl_t > m_ocl;
 
@@ -100,7 +95,7 @@ public:
 
    boost::shared_ptr< GfxApi::ShaderProgram > m_pLastShader;
 
-   std::vector< VertexPositionNormal> m_mdcVertices;
+   //std::vector< VertexPositionNormal> m_mdcVertices;
 
 };
 

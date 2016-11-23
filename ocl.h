@@ -201,7 +201,7 @@ struct ocl_t
 
       m_queue = cl::CommandQueue( *context, default_device );
 
-      m_edge_buffer = boost::make_shared<cl::Buffer>( *context, CL_MEM_READ_WRITE, m_numVoxels2Border*sizeof( cl_edge_info_t ) );
+      m_edge_buffer = boost::make_shared<cl::Buffer>( *context, CL_MEM_READ_WRITE, m_numVoxels2Border*sizeof( cl_block_info_t ) );
       m_occupied_buffer = boost::make_shared<cl::Buffer>( *context, CL_MEM_READ_WRITE, m_numVoxels2Border*sizeof( uint32_t ) );
       m_occupied_scan_buffer = boost::make_shared<cl::Buffer>( *context, CL_MEM_READ_WRITE, m_numVoxels2Border*sizeof( uint32_t ) );
       m_density_buffer = boost::make_shared<cl::Buffer>( *context, CL_MEM_READ_WRITE, m_numVoxels2Border*sizeof( uint32_t ) );
@@ -238,15 +238,14 @@ struct ocl_t
 
       m_queue.enqueueNDRangeKernel( density_kernel, cl::NullRange, cl::NDRange( units, units, units )/*, cl::NDRange( 4, 4, 4 )*/ );
 
-      //int test_return;
+      int test_return[34*34*34];
 
-
-      //m_queue.enqueueReadBuffer(*m_density_buffer, CL_TRUE, 0, sizeof(float), &test_return);
+      m_queue.enqueueReadBuffer(*m_density_buffer, CL_TRUE, 0, 34 * 34 * 34*sizeof(int), &test_return);
 
    }
 
 
-   void classifyEdges( std::size_t rn, std::vector<cl_edge_info_t>& compactedEdges )
+   void classifyBlocks( std::size_t rn, std::vector<cl_block_info_t>& compactedBlocks, uint32_t borderSize )
    {
       std::vector<boost::chrono::duration<int_least64_t, boost::nano>> times;
 
@@ -255,10 +254,11 @@ struct ocl_t
 
       std::size_t units = rn;
       auto t1 = Clock::now();
-      cl::Kernel classify_kernel( *program, "classifyEdges" );
+      cl::Kernel classify_kernel( *program, "classifyBlocks" );
       classify_kernel.setArg( 0, *m_density_buffer );
       classify_kernel.setArg( 1, *m_occupied_buffer );
       classify_kernel.setArg( 2, *m_edge_buffer );
+      classify_kernel.setArg( 3, borderSize );
       cl::Event event;
       t1 = Clock::now();
       m_queue.enqueueNDRangeKernel( classify_kernel, cl::NullRange, cl::NDRange( units, units, units ), cl::NDRange( 2, 2, 2 ), NULL, &event );
@@ -285,8 +285,8 @@ struct ocl_t
       t1 = Clock::now();
       if( result > 0 )
       {
-         auto compact_buffer = boost::make_shared<cl::Buffer>( *context, CL_MEM_READ_WRITE, result*sizeof( cl_edge_info_t ) );
-         cl::Kernel compact_kernel( *program, "compactEdges" );
+         auto compact_buffer = boost::make_shared<cl::Buffer>( *context, CL_MEM_READ_WRITE, result*sizeof( cl_block_info_t ) );
+         cl::Kernel compact_kernel( *program, "compactBlocks" );
          compact_kernel.setArg( 0, *m_occupied_buffer );
          compact_kernel.setArg( 1, *m_occupied_scan_buffer );
          compact_kernel.setArg( 2, *compact_buffer );
@@ -294,9 +294,9 @@ struct ocl_t
          compact_kernel.setArg( 4, count );
 
          m_queue.enqueueNDRangeKernel( compact_kernel, cl::NullRange, cl::NDRange( count ) );
-         compactedEdges.resize( result );
+         compactedBlocks.resize( result );
 
-         m_queue.enqueueReadBuffer( *compact_buffer, CL_TRUE, 0, result * sizeof( cl_edge_info_t ), &compactedEdges[0] );
+         m_queue.enqueueReadBuffer( *compact_buffer, CL_TRUE, 0, result * sizeof( cl_block_info_t ), &compactedBlocks[0] );
 
       }
       t22 = Clock::now();

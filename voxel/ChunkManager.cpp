@@ -138,12 +138,12 @@ void ChunkManager::initTree( boost::shared_ptr<ChunkTree> pChild )
    float3 c0 = bounds.CornerPoint( pChild->getCorner().index() );
 
    // @TODO this is still not working right on the Y axis...
-   AABB b0( float3( std::min( c0.x, center.x ) + pChild->getParent()->getValue()->m_scale / 4,
-                    std::min( c0.y, center.y ) + pChild->getParent()->getValue()->m_scale / 4,
-                    std::min( c0.z, center.z ) + pChild->getParent()->getValue()->m_scale / 4 ),
-            float3( std::max( c0.x, center.x ) + pChild->getParent()->getValue()->m_scale / 4,
-                    std::max( c0.y, center.y ) + pChild->getParent()->getValue()->m_scale / 4,
-                    std::max( c0.z, center.z ) + pChild->getParent()->getValue()->m_scale / 4 ) );
+   AABB b0( float3( std::min( c0.x, center.x ) ,
+                    std::min( c0.y, center.y ) ,
+                    std::min( c0.z, center.z ) ),
+            float3( std::max( c0.x, center.x ) ,
+                    std::max( c0.y, center.y )  ,
+                    std::max( c0.z, center.z )  ) );
 
    pChunk = boost::make_shared<NodeChunk>( 1.0f / pChild->getLevel(), b0, this, false );
 
@@ -167,12 +167,12 @@ void ChunkManager::initTreeNoQueue( boost::shared_ptr<ChunkTree> pChild )
    float3 c0 = bounds.CornerPoint( pChild->getCorner().index() );
 
    // @TODO this is still not working right on the Y axis...
-   AABB b0( float3( std::min( c0.x, center.x ) + pChild->getParent()->getValue()->m_scale / 4,
-                    std::min( c0.y, center.y ) + pChild->getParent()->getValue()->m_scale / 4,
-                    std::min( c0.z, center.z ) + pChild->getParent()->getValue()->m_scale / 4 ),
-            float3( std::max( c0.x, center.x ) + pChild->getParent()->getValue()->m_scale / 4,
-                    std::max( c0.y, center.y ) + pChild->getParent()->getValue()->m_scale / 4,
-                    std::max( c0.z, center.z ) + pChild->getParent()->getValue()->m_scale / 4 ) );
+   AABB b0( float3( std::min( c0.x, center.x ),
+                    std::min( c0.y, center.y )  ,
+                    std::min( c0.z, center.z )   ),
+            float3( std::max( c0.x, center.x )  ,
+                    std::max( c0.y, center.y ) ,
+                    std::max( c0.z, center.z )   ) );
 
    pChunk = boost::make_shared<NodeChunk>( 1.0f / pChild->getLevel(), b0, this, false );
 
@@ -191,7 +191,7 @@ bool ChunkManager::isAcceptablePixelError( float3& cameraPos, ChunkTree& tree )
 
    //All nodes within this distance will surely be rendered
    //float f_0 = x_0 * 1.9f;
-   float f_0 = x_0 * 2.9f;
+   float f_0 = x_0 * 1.5f;
 
    float3 delta = cameraPos - box.CenterPoint();
    //Node distance from camera

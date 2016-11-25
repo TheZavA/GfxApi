@@ -76,49 +76,120 @@ void NodeChunk::createMesh()
 
       //float size = m_scale / ChunkManager::CHUNK_SIZE / 100;
 
-      if( vertex.block_info & 4 )
-      {
-
-         m_vertices.push_back( VertexPosition( x + size,   y - size,  z + size ) );
-         m_vertices.push_back( VertexPosition( x,          y - size,  z + size ) );
-         m_vertices.push_back( VertexPosition( x + size,   y,         z + size ) );
-         m_vertices.push_back( VertexPosition( x,          y,         z + size ) );
-      }
       if( vertex.block_info & 8 )
       {
-         m_vertices.push_back( VertexPosition( x + size,        y - size, z ) );
-         m_vertices.push_back( VertexPosition( x , y - size, z ) );
-         m_vertices.push_back( VertexPosition( x + size,        y,        z ) );
-         m_vertices.push_back( VertexPosition( x , y,        z ) );
+         int highestIndex = m_indices.size();
+         m_vertices.push_back( VertexPosition( x,      y,     z ) );
+         m_vertices.push_back( VertexPosition( x,      y + 1, z ) );
+         m_vertices.push_back( VertexPosition( x + 1,  y + 1, z ) );
+
+         m_vertices.push_back( VertexPosition( x, y, z ) );
+         m_vertices.push_back( VertexPosition( x + 1, y + 1, z ) );
+         m_vertices.push_back( VertexPosition( x + 1,  y,     z ) );
+
+         m_indices.push_back( highestIndex );
+         m_indices.push_back( highestIndex + 1 );
+         m_indices.push_back( highestIndex + 2 );
+         m_indices.push_back( highestIndex + 3);
+         m_indices.push_back( highestIndex + 4 );
+         m_indices.push_back( highestIndex + 5 );
+      }
+
+      if( vertex.block_info & 4 )
+      {
+         int highestIndex = m_indices.size();
+         m_vertices.push_back( VertexPosition( x, y, z + 1 ) );
+         m_vertices.push_back( VertexPosition( x, y + 1, z + 1) );
+         m_vertices.push_back( VertexPosition( x + 1, y + 1, z + 1 ) );
+
+         m_vertices.push_back( VertexPosition( x, y, z  + 1) );
+         m_vertices.push_back( VertexPosition( x + 1, y + 1, z + 1 ) );
+         m_vertices.push_back( VertexPosition( x + 1, y, z + 1 ) );
+
+         m_indices.push_back( highestIndex );
+         m_indices.push_back( highestIndex + 1 );
+         m_indices.push_back( highestIndex + 2 );
+         m_indices.push_back( highestIndex + 3 );
+         m_indices.push_back( highestIndex + 4 );
+         m_indices.push_back( highestIndex + 5 );                                
+      }
+
+
+      if( vertex.block_info & 2 )
+      {
+         int highestIndex = m_indices.size();
+         m_vertices.push_back( VertexPosition( x,        y,        z + size ) );
+         m_vertices.push_back( VertexPosition( x + size, y,        z + size ) );
+         m_vertices.push_back( VertexPosition( x + size, y,        z ) );
+
+         m_vertices.push_back( VertexPosition( x, y, z + size ) );
+         m_vertices.push_back( VertexPosition( x + size, y, z ) );
+         m_vertices.push_back( VertexPosition( x,        y,        z ) );
+
+         m_indices.push_back( highestIndex );
+         m_indices.push_back( highestIndex + 1 );
+         m_indices.push_back( highestIndex + 2 );
+         m_indices.push_back( highestIndex + 3 );
+         m_indices.push_back( highestIndex + 4 );
+         m_indices.push_back( highestIndex + 5 );
       }
       if( vertex.block_info & 1 )
       {
-         m_vertices.push_back( VertexPosition( x,        y,        z ) );
-         m_vertices.push_back( VertexPosition( x + size, y,        z ) );
-         m_vertices.push_back( VertexPosition( x,        y,        z + size ) );
-         m_vertices.push_back( VertexPosition( x + size, y,        z + size ) );
+         int highestIndex = m_indices.size();
+         m_vertices.push_back( VertexPosition( x,        y + 1,        z + size ) );
+         m_vertices.push_back( VertexPosition( x + size, y + 1,        z + size ) );
+         m_vertices.push_back( VertexPosition( x + size, y + 1,        z ) );
+
+         m_vertices.push_back( VertexPosition( x, y + 1, z + size ) );
+         m_vertices.push_back( VertexPosition( x + size, y + 1, z ) );
+         m_vertices.push_back( VertexPosition( x,        y + 1,        z ) );
+
+         m_indices.push_back( highestIndex );
+         m_indices.push_back( highestIndex + 1 );
+         m_indices.push_back( highestIndex + 2 );
+         m_indices.push_back( highestIndex + 3 );
+         m_indices.push_back( highestIndex + 4 );
+         m_indices.push_back( highestIndex + 5 );
       }
-      if( vertex.block_info & 2 )
+      if( vertex.block_info & 32 )
       {
-         m_vertices.push_back( VertexPosition( x,        y - size, z + size ) );
-         m_vertices.push_back( VertexPosition( x + size, y - size, z + size ) );
-         m_vertices.push_back( VertexPosition( x,        y - size, z ) );
-         m_vertices.push_back( VertexPosition( x + size, y - size, z ) );
+         int highestIndex = m_indices.size();
+         m_vertices.push_back( VertexPosition( x + 1, y, z ) );
+         m_vertices.push_back( VertexPosition( x + 1, y, z + 1 ) );
+         m_vertices.push_back( VertexPosition( x + 1, y + 1, z + 1 ) );
+
+         m_vertices.push_back( VertexPosition( x + 1, y, z ) );
+         m_vertices.push_back( VertexPosition( x + 1, y + 1, z + 1 ) );
+         m_vertices.push_back( VertexPosition( x + 1, y + 1, z ) );
+
+
+         m_indices.push_back( highestIndex );
+         m_indices.push_back( highestIndex + 1 );
+         m_indices.push_back( highestIndex + 2 );
+         m_indices.push_back( highestIndex + 3 );
+         m_indices.push_back( highestIndex + 4 );
+         m_indices.push_back( highestIndex + 5 );
       }
-      //if( vertex.block_info & 16 )
-      //{
-      //   m_vertices.push_back( VertexPosition( x,        y - size, z ) );
-      //   m_vertices.push_back( VertexPosition( x + size, y - size, z ) );
-      //   m_vertices.push_back( VertexPosition( x,        y,        z ) );
-      //   m_vertices.push_back( VertexPosition( x + size, y,        z ) );
-      //}
-      //if( vertex.block_info & 32 )
-      //{
-      //   m_vertices.push_back( VertexPosition( x + size,   y - size,  z + size ) );
-      //   m_vertices.push_back( VertexPosition( x,          y - size,  z + size ) );
-      //   m_vertices.push_back( VertexPosition( x + size,   y,         z + size ) );
-      //   m_vertices.push_back( VertexPosition( x,          y,         z + size ) );
-      //}
+      if( vertex.block_info & 16 )
+      {
+         int highestIndex = m_indices.size();
+         m_vertices.push_back( VertexPosition( x,        y,     z ) );
+         m_vertices.push_back( VertexPosition( x,        y,     z + 1 ) );
+         m_vertices.push_back( VertexPosition( x,        y + 1, z + 1 ) );
+
+         m_vertices.push_back( VertexPosition( x,        y,     z ) );
+         m_vertices.push_back( VertexPosition( x,        y + 1, z + 1 ) );
+         m_vertices.push_back( VertexPosition( x,        y + 1, z ) );
+
+
+         m_indices.push_back( highestIndex );
+         m_indices.push_back( highestIndex + 1 );
+         m_indices.push_back( highestIndex + 2 );
+         m_indices.push_back( highestIndex + 3 );
+         m_indices.push_back( highestIndex + 4 );
+         m_indices.push_back( highestIndex + 5 );
+
+      }
       
 
      // if( i > 900 )
@@ -135,17 +206,17 @@ void NodeChunk::createMesh()
    decl.Add( GfxApi::VertexElement( GfxApi::VertexDataSemantic::NORMAL, GfxApi::VertexDataType::FLOAT, 3, "vertex_normal" ) );
    decl.Add( GfxApi::VertexElement( GfxApi::VertexDataSemantic::TCOORD, GfxApi::VertexDataType::INT, 2, "vertex_material" ) );
 
-   auto mesh = boost::make_shared<GfxApi::Mesh>( GfxApi::PrimitiveType::TriangleStrip );
+   auto mesh = boost::make_shared<GfxApi::Mesh>( GfxApi::PrimitiveType::TriangleList );
    mesh->Bind();
 
    boost::shared_ptr<GfxApi::VertexBuffer> pVertexBuffer =
       boost::make_shared<GfxApi::VertexBuffer>( m_vertices.size(), decl, GfxApi::Usage::STATIC_DRAW );
 
-  /* boost::shared_ptr<GfxApi::IndexBuffer> pIndexBuffer =
+   boost::shared_ptr<GfxApi::IndexBuffer> pIndexBuffer =
       boost::make_shared<GfxApi::IndexBuffer>( mesh, m_indices.size(), GfxApi::PrimitiveIndexType::Indices32Bit, GfxApi::Usage::STATIC_DRAW );
-*/
+
    float * vbPtr = reinterpret_cast< float* >( pVertexBuffer->CpuPtr() );
-  // unsigned int * ibPtr = reinterpret_cast< unsigned int* >( pIndexBuffer->CpuPtr() );
+   unsigned int * ibPtr = reinterpret_cast< unsigned int* >( pIndexBuffer->CpuPtr() );
 
    uint32_t offset = 0;
 
@@ -154,9 +225,9 @@ void NodeChunk::createMesh()
       vbPtr[offset + 0] = vertexInf.px;
       vbPtr[offset + 1] = vertexInf.py;
       vbPtr[offset + 2] = vertexInf.pz;
-      vbPtr[offset + 3] = 1;
+    /*  vbPtr[offset + 3] = 1;
       vbPtr[offset + 4] = 1;
-      vbPtr[offset + 5] = 1;
+      vbPtr[offset + 5] = 1;*/
    //   *( int* ) ( &vbPtr[offset + 6] ) = 1;
    //   *( int* ) ( &vbPtr[offset + 7] ) = 0;
       offset += 8;
@@ -171,16 +242,16 @@ void NodeChunk::createMesh()
    pVertexBuffer->UpdateToGpu();
    offset = 0;
    
- /*  for( auto& idx : m_indices )
+   for( auto& idx : m_indices )
    {
       ibPtr[offset++] = idx;
    }
 
    pIndexBuffer->Bind();
-   pIndexBuffer->UpdateToGpu();*/
+   pIndexBuffer->UpdateToGpu();
 
    mesh->vbs.push_back( pVertexBuffer );
-   //mesh->ib.swap( pIndexBuffer );
+   mesh->ib.swap( pIndexBuffer );
 
    mesh->sp = m_pChunkManager->m_shaders[0];
 

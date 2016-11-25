@@ -30,7 +30,7 @@ public:
    ~ChunkManager( void );
 
    static const int CHUNK_SIZE = 32;
-   static const int MAX_LOD_LEVEL = 7;
+   static const int MAX_LOD_LEVEL = 11;
 
    static const int WORLD_BOUNDS_MIN_XZ = -512000;
    static const int WORLD_BOUNDS_MIN_Y = -512000;

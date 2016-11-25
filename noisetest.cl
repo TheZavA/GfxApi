@@ -1328,7 +1328,7 @@ float densities3d(float3 pos, uchar level)
 {
     
    //return pos.y < 400 ? -1 : 1;
-  // return sphereFunction((float4)(pos.x, pos.y, pos.z, 0.0f)) - 200000335.f ;
+   //return sphereFunction((float4)(pos.x, pos.y, pos.z, 0.0f)) - 200000335.f ;
    float3 mod_pos = pos * 0.001f;
    //level = 14;
 	     

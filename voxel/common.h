@@ -6,6 +6,20 @@
 #include <stdint.h>
 #include "mgl/MathGeoLib.h"
 
+const int faceList[6][5][3] = 
+{
+   { { 0, 1, 1 },{ 1, 1, 1 },{ 1, 1, 0 },{ 0, 1, 0 }, /*normal*/{ 0, -1, 0 } },
+
+   { { 0, 0, 1 },{ 1, 0, 1 },{ 1, 0, 0 },{ 0, 0, 0 }, /*normal*/{ 0, 1, 0 } },
+
+   { { 0, 0, 1 },{ 0, 1, 1 },{ 1, 1, 1 },{ 1, 0, 1 }, /*normal*/{ -1, 0, 0 } },
+
+   { { 1, 1, 0 },{ 0, 1, 0 },{ 0, 0, 0 },{ 1, 0, 0 }, /*normal*/{ 1, 0, 0 } },
+
+   { { 0, 0, 0 },{ 0, 0, 1 },{ 0, 1, 1 },{ 0, 1, 0 }, /*normal*/{ 0, 0, -1 } },
+
+   { { 1, 0, 0 },{ 1, 0, 1 },{ 1, 1, 1 },{ 1, 1, 0 }, /*normal*/{ 0, 0, 1 } }
+};
 
 struct cell_t
 {
@@ -72,6 +86,28 @@ typedef struct cl_block_info
     uint8_t grid_pos[3];
     uint8_t block_info;
 } cl_block_info_t;
+
+typedef struct cl_vertex
+{
+   cl_vertex( float x, float y, float z, int8_t nx1 = 0, int8_t ny1 = 0, int8_t nz1 = 0 )
+   {
+      px = ( uint8_t ) x;
+      py = ( uint8_t ) y;
+      pz = ( uint8_t ) z;
+      nx = nx1;
+      ny = ny1;
+      nz = nz1;
+   }
+
+   uint8_t px;
+   uint8_t py;
+   uint8_t pz;
+   int8_t nx;
+   int8_t ny;
+   int8_t nz;
+   uint8_t localAO;
+
+} cl_vertex_t;
 
 typedef struct textureTreeNode
 {

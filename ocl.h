@@ -238,12 +238,26 @@ struct ocl_t
 
       m_queue.enqueueNDRangeKernel( density_kernel, cl::NullRange, cl::NDRange( units, units, units )/*, cl::NDRange( 4, 4, 4 )*/ );
 
-      int test_return[34*34*34];
-
-      m_queue.enqueueReadBuffer(*m_density_buffer, CL_TRUE, 0, 34 * 34 * 34*sizeof(int), &test_return);
-
    }
 
+   void calulateBlockAO( std::size_t rn, std::vector< cl_vertex_t >& blockVertices )
+   {
+      std::size_t units = blockVertices.size();
+
+      auto tempBuffer = boost::make_shared<cl::Buffer>( *context, CL_MEM_READ_WRITE, rn * sizeof( cl_vertex_t ) );
+
+      m_queue.enqueueWriteBuffer( *tempBuffer, CL_TRUE, 0, rn * sizeof( cl_vertex_t ), &blockVertices[0] );
+
+      cl::Kernel classify_kernel( *program, "calulateBlockAO" );
+      classify_kernel.setArg( 0, *m_density_buffer );
+      classify_kernel.setArg( 1, *tempBuffer );
+      
+      m_queue.enqueueNDRangeKernel( classify_kernel, cl::NullRange, cl::NDRange( units ) );
+
+      int result = 0;
+      m_queue.enqueueReadBuffer( *tempBuffer, CL_TRUE, 0, rn * sizeof( cl_vertex_t ), &blockVertices[0] );
+   }
+   
 
    void classifyBlocks( std::size_t rn, std::vector<cl_block_info_t>& compactedBlocks, uint32_t borderSize )
    {

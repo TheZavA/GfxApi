@@ -4,19 +4,13 @@ in vec3 normal;
 in vec3 pos;
 in vec4 world_pos;
 in float material;
-
-uniform sampler2D tex1;
-uniform sampler2D tex2;
-uniform sampler2D tex3;
-uniform sampler2D tex4;
+in float ao;
 
 uniform float res;
 
 uniform vec3 cameraPos;
 
 out vec4 frag_colour;
-
-
 
 vec3 applyFog( in vec3  rgb,       // original color of the pixel
                in float distance,
@@ -143,12 +137,17 @@ vec4 mapZoom(sampler2D texture)
 
 void main () 
 {
-	vec3 n1 = normalize(vec3(normal.x, -normal.y, normal.z));
-	float intensity = clamp( dot( n1, vec3(0.4, 0.6, 0.2)), 0,1 );
+   
+   vec3 n1 = normalize(vec3(normal.x, -normal.y, normal.z));
+   float intensity = clamp( dot( n1, vec3(0.4, 0.8, 0.2)), 0, 1 );
+   frag_colour = (vec4(0.8,0.8,0.8,0) * (intensity * 2) + vec4(0.2,0.2,0.2,0)) * ao;
+   return;
+	
+	
     
 
 	
-    vec4 rock_normal = mapZoom(tex3) ;
+   /* vec4 rock_normal = mapZoom(tex3) ;
     vec4 grass_normal = mapZoom(tex4) ;
 
     float intensity_rock = dot(vec3(0.9, 0.6, 0.2), vec3(rock_normal.x, -rock_normal.y, rock_normal.z)) ;
@@ -223,5 +222,5 @@ void main ()
 
     frag_colour = vec4(vec3(MaterialAmbientColor.rgb + textureColor.rgb * intensity), 1);
 	//frag_colour = vec4(vec3(MaterialAmbientColor.rgb  * intensity), 1);
-    
+ */   
 }

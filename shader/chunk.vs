@@ -3,16 +3,15 @@
 uniform mat4 world;
 uniform mat4 worldViewProj;
 
-in vec3 vertex_position;
-in vec3 vertex_normal;
-in ivec2 vertex_material;
-
+in ivec3 vertex_position;
+in ivec3 vertex_normal;
+in int vertex_ao;
 
 out vec3 normal;
 out vec3 pos;
 out vec4 world_pos;
 out float material;
-
+out float ao;
 
 void main () 
 {
@@ -20,5 +19,6 @@ void main ()
 	world_pos = world * vec4 (vertex_position, 1.0);
 	normal = vertex_normal;
 	pos = vertex_position;
-	material = vertex_material.x;
+	material = 0;
+   ao = float(vertex_ao)/255;
 }

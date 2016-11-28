@@ -16,19 +16,6 @@
 
 class ChunkManager;
 
-struct VertexPosition
-{
-   VertexPosition( float x, float y, float z )
-   {
-      px = x;
-      py = y;
-      pz = z;
-   }
-
-   float px;
-   float py;
-   float pz;
-};
 
 class NodeChunk
 {
@@ -39,8 +26,6 @@ public:
 
    bool m_bHasNodes;
 
-   std::atomic< bool > m_bClassified;
-
    std::atomic< bool > m_bGenerated;
 
    boost::shared_ptr< bool > m_workInProgress;
@@ -49,13 +34,13 @@ public:
 
    boost::shared_ptr< GfxApi::Mesh > m_pMesh;
 
-   std::vector< unsigned int > m_indices;
-   std::vector< int > m_tri_count;
+   std::vector< uint16_t > m_indices;
 
-   std::vector< VertexPosition > m_vertices;
+   std::vector< cl_vertex_t > m_vertices;
 
    boost::shared_ptr< TOctree< boost::shared_ptr< NodeChunk > > > m_pTree;
    boost::shared_ptr< std::vector<cl_block_info_t> > m_compactedBlocks;
+   boost::shared_ptr< std::vector<uint8_t> > m_compactedLocalAO;
 
    NodeChunk( float scale, const AABB& bounds, ChunkManager* pChunkManager, bool hasNodes = false );
 
@@ -66,6 +51,7 @@ public:
    void createMesh();
 
    void generateDensities();
+   void generateVertices();
 
    void classifyBlocks();
 

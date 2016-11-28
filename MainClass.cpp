@@ -257,10 +257,6 @@ void MainClass::mainLoop()
 
    m_pChunkManager = boost::make_shared<ChunkManager>( m_camera );
 
-   m_tex = textureFromBmp( "rock.bmp" );
-   m_tex1 = textureFromBmp( "grass.bmp" );
-   m_tex2 = textureFromBmp( "normal.bmp" );
-   m_tex3 = textureFromBmp( "grass_normal.bmp" );
 
 
    //tex.loadBMP("rock.bmp", 0);
@@ -512,55 +508,9 @@ void MainClass::onTick()
 
             m_pChunkManager->m_shaders[0]->Use();
             m_pChunkManager->m_shaders[0]->SetUniform( m_camera.ViewProjMatrix(), "worldViewProj" );
-            //m_pChunkManager->m_shaders[0]->SetUniform(0, "tex1");
-            //m_pChunkManager->m_shaders[0]->SetUniform(1, "tex2");
-            //m_pChunkManager->m_shaders[0]->SetUniform(2, "tex3");
-            //m_pChunkManager->m_shaders[0]->SetUniform(3, "tex4");
-            m_pChunkManager->m_shaders[0]->SetUniform( m_camera.pos.x, m_camera.pos.y, m_camera.pos.z, "cameraPos" );
+            //m_pChunkManager->m_shaders[0]->SetUniform( m_camera.pos.x, m_camera.pos.y, m_camera.pos.z, "cameraPos" );
 
-         if( visible->m_pMesh->textures.size() < 1 )
-         {
-            auto texture_unit = boost::make_shared<GfxApi::TextureUnit>( 0 );
-            auto sampler = boost::make_shared<GfxApi::TextureSampler>();
-            sampler->magFilter = GfxApi::TextureFilterMode::Linear;
-            sampler->minFilter = GfxApi::TextureFilterMode::LinearMipmapLinear;
-            sampler->GenerateParams();
-            std::string sampler_name = "tex1";
-
-            auto mesh_texture = boost::make_shared<GfxApi::MeshTexture>( m_tex, texture_unit, sampler, sampler_name );
-            visible->m_pMesh->textures.push_back( mesh_texture );
-
-            auto texture_unit1 = boost::make_shared<GfxApi::TextureUnit>( 1 );
-            auto sampler1 = boost::make_shared<GfxApi::TextureSampler>();
-            sampler1->magFilter = GfxApi::TextureFilterMode::Linear;
-            sampler1->minFilter = GfxApi::TextureFilterMode::LinearMipmapLinear;
-            sampler1->GenerateParams();
-            std::string sampler_name1 = "tex2";
-
-            auto mesh_texture1 = boost::make_shared<GfxApi::MeshTexture>( m_tex1, texture_unit1, sampler1, sampler_name1 );
-            visible->m_pMesh->textures.push_back( mesh_texture1 );
-
-            auto texture_unit2 = boost::make_shared<GfxApi::TextureUnit>( 2 );
-            auto sampler2 = boost::make_shared<GfxApi::TextureSampler>();
-            sampler2->magFilter = GfxApi::TextureFilterMode::Linear;
-            sampler2->minFilter = GfxApi::TextureFilterMode::LinearMipmapLinear;
-            sampler2->GenerateParams();
-            std::string sampler_name2 = "tex3";
-
-            auto mesh_texture2 = boost::make_shared<GfxApi::MeshTexture>( m_tex2, texture_unit2, sampler2, sampler_name2 );
-            visible->m_pMesh->textures.push_back( mesh_texture2 );
-
-            auto texture_unit3 = boost::make_shared<GfxApi::TextureUnit>( 3 );
-            auto sampler3 = boost::make_shared<GfxApi::TextureSampler>();
-            sampler3->magFilter = GfxApi::TextureFilterMode::Linear;
-            sampler3->minFilter = GfxApi::TextureFilterMode::LinearMipmapLinear;
-            sampler3->GenerateParams();
-            std::string sampler_name3 = "tex4";
-
-            auto mesh_texture3 = boost::make_shared<GfxApi::MeshTexture>( m_tex3, texture_unit3, sampler3, sampler_name3 );
-            visible->m_pMesh->textures.push_back( mesh_texture3 );
-         }
-
+     
 
          double scale = ( 1.0f / ChunkManager::CHUNK_SIZE ) * ( visible->m_chunk_bounds.MaxX() - visible->m_chunk_bounds.MinX() );
 
@@ -572,24 +522,7 @@ void MainClass::onTick()
          visible->m_pMesh->Bind();
 
          visible->m_pMesh->sp->SetUniform( xForm, "world" );
-         visible->m_pMesh->sp->SetUniform( visible->m_scale, "res" );
-
-         for( auto mesh_texture : visible->m_pMesh->textures )
-         {
-            auto& texture_unit = mesh_texture->texture_unit;
-            texture_unit->Activate();
-            mesh_texture->texture->Bind();
-
-
-            if( !mesh_texture->sampler )
-               texture_unit->UnBindSampler();
-            else
-               texture_unit->BindSampler( *mesh_texture->sampler );
-
-            //mesh_texture->texture->GenMipmaps();
-
-            visible->m_pMesh->sp->BindTexture( texture_unit->Index(), *texture_unit, *mesh_texture->texture, mesh_texture->sampler_name );
-         }
+        // visible->m_pMesh->sp->SetUniform( visible->m_scale, "res" );
 
          visible->m_pMesh->Draw();
 
@@ -612,55 +545,7 @@ void MainClass::onTick()
          }
          m_pChunkManager->m_shaders[0]->Use();
          m_pChunkManager->m_shaders[0]->SetUniform( m_camera.ViewProjMatrix(), "worldViewProj" );
-         //m_pChunkManager->m_shaders[0]->SetUniform(0, "tex1");
-         //m_pChunkManager->m_shaders[0]->SetUniform(1, "tex2");
-         //m_pChunkManager->m_shaders[0]->SetUniform(2, "tex3");
-         //m_pChunkManager->m_shaders[0]->SetUniform(3, "tex4");
-         m_pChunkManager->m_shaders[0]->SetUniform( m_camera.pos.x, m_camera.pos.y, m_camera.pos.z, "cameraPos" );
-
-         if( visible->m_pMesh->textures.size() < 1 )
-         {
-            auto texture_unit = boost::make_shared<GfxApi::TextureUnit>( 0 );
-            auto sampler = boost::make_shared<GfxApi::TextureSampler>();
-            sampler->magFilter = GfxApi::TextureFilterMode::Linear;
-            sampler->minFilter = GfxApi::TextureFilterMode::LinearMipmapLinear;
-            sampler->GenerateParams();
-            std::string sampler_name = "tex1";
-
-            auto mesh_texture = boost::make_shared<GfxApi::MeshTexture>( m_tex, texture_unit, sampler, sampler_name );
-            visible->m_pMesh->textures.push_back( mesh_texture );
-
-            auto texture_unit1 = boost::make_shared<GfxApi::TextureUnit>( 1 );
-            auto sampler1 = boost::make_shared<GfxApi::TextureSampler>();
-            sampler1->magFilter = GfxApi::TextureFilterMode::Linear;
-            sampler1->minFilter = GfxApi::TextureFilterMode::LinearMipmapLinear;
-            sampler1->GenerateParams();
-            std::string sampler_name1 = "tex2";
-
-            auto mesh_texture1 = boost::make_shared<GfxApi::MeshTexture>( m_tex1, texture_unit1, sampler1, sampler_name1 );
-            visible->m_pMesh->textures.push_back( mesh_texture1 );
-
-            auto texture_unit2 = boost::make_shared<GfxApi::TextureUnit>( 2 );
-            auto sampler2 = boost::make_shared<GfxApi::TextureSampler>();
-            sampler2->magFilter = GfxApi::TextureFilterMode::Linear;
-            sampler2->minFilter = GfxApi::TextureFilterMode::LinearMipmapLinear;
-            sampler2->GenerateParams();
-            std::string sampler_name2 = "tex3";
-
-            auto mesh_texture2 = boost::make_shared<GfxApi::MeshTexture>( m_tex2, texture_unit2, sampler2, sampler_name2 );
-            visible->m_pMesh->textures.push_back( mesh_texture2 );
-
-            auto texture_unit3 = boost::make_shared<GfxApi::TextureUnit>( 3 );
-            auto sampler3 = boost::make_shared<GfxApi::TextureSampler>();
-            sampler3->magFilter = GfxApi::TextureFilterMode::Linear;
-            sampler3->minFilter = GfxApi::TextureFilterMode::LinearMipmapLinear;
-            sampler3->GenerateParams();
-            std::string sampler_name3 = "tex4";
-
-            auto mesh_texture3 = boost::make_shared<GfxApi::MeshTexture>( m_tex3, texture_unit3, sampler3, sampler_name3 );
-            visible->m_pMesh->textures.push_back( mesh_texture3 );
-         }
-
+         //m_pChunkManager->m_shaders[0]->SetUniform( m_camera.pos.x, m_camera.pos.y, m_camera.pos.z, "cameraPos" );
 
          double scale = ( 1.0f / ChunkManager::CHUNK_SIZE ) * ( visible->m_chunk_bounds.MaxX() - visible->m_chunk_bounds.MinX() );
 
@@ -672,24 +557,7 @@ void MainClass::onTick()
          visible->m_pMesh->Bind();
 
          visible->m_pMesh->sp->SetUniform( xForm, "world" );
-         visible->m_pMesh->sp->SetUniform( visible->m_scale, "res" );
-
-         for( auto mesh_texture : visible->m_pMesh->textures )
-         {
-            auto& texture_unit = mesh_texture->texture_unit;
-            texture_unit->Activate();
-            mesh_texture->texture->Bind();
-
-
-            if( !mesh_texture->sampler )
-               texture_unit->UnBindSampler();
-            else
-               texture_unit->BindSampler( *mesh_texture->sampler );
-
-            //mesh_texture->texture->GenMipmaps();
-
-            visible->m_pMesh->sp->BindTexture( texture_unit->Index(), *texture_unit, *mesh_texture->texture, mesh_texture->sampler_name );
-         }
+         //visible->m_pMesh->sp->SetUniform( visible->m_scale, "res" );
 
          visible->m_pMesh->Draw();
 
@@ -697,119 +565,6 @@ void MainClass::onTick()
       }
 
    }
-
-   //if( m_pChunkManager->m_scene_current )
-   //{
-   //   m_pChunkManager->m_shaders[0]->Use();
-   //   m_pChunkManager->m_shaders[0]->SetUniform( m_camera.ViewProjMatrix(), "worldViewProj" );
-   //   //m_pChunkManager->m_shaders[0]->SetUniform(0, "tex1");
-   //   //m_pChunkManager->m_shaders[0]->SetUniform(1, "tex2");
-   //   //m_pChunkManager->m_shaders[0]->SetUniform(2, "tex3");
-   //   //m_pChunkManager->m_shaders[0]->SetUniform(3, "tex4");
-   //   m_pChunkManager->m_shaders[0]->SetUniform( m_camera.pos.x, m_camera.pos.y, m_camera.pos.z, "cameraPos" );
-
-   //   //for (auto& chunk_list : *m_pChunkManager->m_scene_current)
-   //   for( std::size_t i = ChunkManager::MAX_LOD_LEVEL + 3; i > 0; i-- )
-   //   {
-   //      auto& chunk_list = ( *m_pChunkManager->m_scene_current )[i];
-   //      for( auto& chunk : chunk_list )
-   //      {
-   //         if( chunk->m_pMesh && !m_bHideTerrain )
-   //         {
-   //            //if( m_camera.Intersects( chunk->m_chunk_bounds ) )
-   //            {
-   //              // if( m_bNoCamUpdate )
-   //               {
-   //                //  if( !m_cameraFrozen.Intersects( chunk->m_chunk_bounds ) )
-   //                  {
-   //                     // continue;
-   //                  }
-   //               }
-
-   //               if( chunk->m_pMesh->textures.size() < 1 )
-   //               {
-   //                  auto texture_unit = boost::make_shared<GfxApi::TextureUnit>( 0 );
-   //                  auto sampler = boost::make_shared<GfxApi::TextureSampler>();
-   //                  sampler->magFilter = GfxApi::TextureFilterMode::Linear;
-   //                  sampler->minFilter = GfxApi::TextureFilterMode::LinearMipmapLinear;
-   //                  sampler->GenerateParams();
-   //                  std::string sampler_name = "tex1";
-
-   //                  auto mesh_texture = boost::make_shared<GfxApi::MeshTexture>( m_tex, texture_unit, sampler, sampler_name );
-   //                  chunk->m_pMesh->textures.push_back( mesh_texture );
-
-   //                  auto texture_unit1 = boost::make_shared<GfxApi::TextureUnit>( 1 );
-   //                  auto sampler1 = boost::make_shared<GfxApi::TextureSampler>();
-   //                  sampler1->magFilter = GfxApi::TextureFilterMode::Linear;
-   //                  sampler1->minFilter = GfxApi::TextureFilterMode::LinearMipmapLinear;
-   //                  sampler1->GenerateParams();
-   //                  std::string sampler_name1 = "tex2";
-
-   //                  auto mesh_texture1 = boost::make_shared<GfxApi::MeshTexture>( m_tex1, texture_unit1, sampler1, sampler_name1 );
-   //                  chunk->m_pMesh->textures.push_back( mesh_texture1 );
-
-   //                  auto texture_unit2 = boost::make_shared<GfxApi::TextureUnit>( 2 );
-   //                  auto sampler2 = boost::make_shared<GfxApi::TextureSampler>();
-   //                  sampler2->magFilter = GfxApi::TextureFilterMode::Linear;
-   //                  sampler2->minFilter = GfxApi::TextureFilterMode::LinearMipmapLinear;
-   //                  sampler2->GenerateParams();
-   //                  std::string sampler_name2 = "tex3";
-
-   //                  auto mesh_texture2 = boost::make_shared<GfxApi::MeshTexture>( m_tex2, texture_unit2, sampler2, sampler_name2 );
-   //                  chunk->m_pMesh->textures.push_back( mesh_texture2 );
-
-   //                  auto texture_unit3 = boost::make_shared<GfxApi::TextureUnit>( 3 );
-   //                  auto sampler3 = boost::make_shared<GfxApi::TextureSampler>();
-   //                  sampler3->magFilter = GfxApi::TextureFilterMode::Linear;
-   //                  sampler3->minFilter = GfxApi::TextureFilterMode::LinearMipmapLinear;
-   //                  sampler3->GenerateParams();
-   //                  std::string sampler_name3 = "tex4";
-
-   //                  auto mesh_texture3 = boost::make_shared<GfxApi::MeshTexture>( m_tex3, texture_unit3, sampler3, sampler_name3 );
-   //                  chunk->m_pMesh->textures.push_back( mesh_texture3 );
-   //               }
-
-
-   //               double scale = ( 1.0f / ChunkManager::CHUNK_SIZE ) * ( chunk->m_chunk_bounds.MaxX() - chunk->m_chunk_bounds.MinX() );
-
-
-   //               auto xForm = float4x4::FromTRS( float3( chunk->m_chunk_bounds.MinX(), chunk->m_chunk_bounds.MinY(), chunk->m_chunk_bounds.MinZ() ),
-   //                                               float4x4( Quat::identity, float3( 0, 0, 0 ) ),
-   //                                               float3( scale, scale, scale ) );
-
-   //               chunk->m_pMesh->Bind();
-
-   //               chunk->m_pMesh->sp->SetUniform( xForm, "world" );
-   //               chunk->m_pMesh->sp->SetUniform( chunk->m_scale, "res" );
-
-   //               for( auto mesh_texture : chunk->m_pMesh->textures )
-   //               {
-   //                  auto& texture_unit = mesh_texture->texture_unit;
-   //                  texture_unit->Activate();
-   //                  mesh_texture->texture->Bind();
-
-
-   //                  if( !mesh_texture->sampler )
-   //                     texture_unit->UnBindSampler();
-   //                  else
-   //                     texture_unit->BindSampler( *mesh_texture->sampler );
-
-   //                  //mesh_texture->texture->GenMipmaps();
-
-   //                  chunk->m_pMesh->sp->BindTexture( texture_unit->Index(), *texture_unit, *mesh_texture->texture, mesh_texture->sampler_name );
-   //               }
-
-   //               chunk->m_pMesh->Draw();
-
-   //               chunk->m_pMesh->UnBind();
-   //            }
-   //         }
-
-   //      }
-
-   //   }
-
-   //}
 
    // Swap front and back buffers 
    glfwSwapBuffers( m_pWindow );

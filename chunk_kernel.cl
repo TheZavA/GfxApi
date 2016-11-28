@@ -15,6 +15,71 @@ typedef struct cl_cell_t
    uchar corners;
 } cell_t;
 
+typedef struct cl_vertex
+{
+   uchar px;
+   uchar py;
+   uchar pz;
+   char nx;
+   char ny;
+   char nz;
+   uchar localAO;
+} cl_vertex_t;
+
+
+kernel
+void
+calulateBlockAO(__global const int* densities, __global cl_vertex_t* vertices )
+{
+   uint i = get_global_id(0);
+
+   float step = 255.0f / 7;
+
+   int x1 = vertices[i].px;
+   int y1 = vertices[i].py;
+   int z1 = vertices[i].pz;
+
+   const int3 coord =  (int3)( x1,   y1,   z1 );
+   const int3 coord1 = (int3)( x1+1, y1,   z1 );
+   const int3 coord2 = (int3)( x1,   y1+1, z1 );
+   const int3 coord3 = (int3)( x1+1, y1+1, z1 );
+   const int3 coord4 = (int3)( x1,   y1,   z1+1 );
+   const int3 coord5 = (int3)( x1+1, y1,   z1+1 );
+   const int3 coord6 = (int3)( x1,   y1+1, z1+1 );
+   const int3 coord7 = (int3)( x1+1, y1+1, z1+1 );
+
+   const int3 size = (int3)( 34, 34, 34 );
+
+   const uint index = ((coord.y * size.x * size.z)) + ((coord.z * size.x)) + coord.x;
+   const uint index1 = ((coord1.y * size.x * size.z)) + ((coord1.z * size.x)) + coord1.x;
+   const uint index2 = ((coord2.y * size.x * size.z)) + ((coord2.z * size.x)) + coord2.x;
+   const uint index3 = ((coord3.y * size.x * size.z)) + ((coord3.z * size.x)) + coord3.x;
+   const uint index4 = ((coord4.y * size.x * size.z)) + ((coord4.z * size.x)) + coord4.x;
+   const uint index5 = ((coord5.y * size.x * size.z)) + ((coord5.z * size.x)) + coord5.x;
+   const uint index6 = ((coord6.y * size.x * size.z)) + ((coord6.z * size.x)) + coord6.x;
+   const uint index7 = ((coord7.y * size.x * size.z)) + ((coord7.z * size.x)) + coord7.x;
+
+   int light = 0;
+   //if( densities[index] == 1 )
+   //   light++;
+   if( densities[index1] == 1 )
+      light++;
+   if( densities[index2] == 1 )
+      light++;
+   if( densities[index3] == 1 )
+      light++;
+   if( densities[index4] == 1 )
+      light++;
+   if( densities[index5] == 1 )
+      light++;
+   if( densities[index6] == 1 )
+      light++;
+   if( densities[index7] == 1 )
+      light++;
+   vertices[i].localAO = light * step;
+
+}
+
 kernel
 void
 classifyBlocks(__global const int* densities, __global int* occupied, __global cl_block_info_t* output, int borderSize )
@@ -29,11 +94,28 @@ classifyBlocks(__global const int* densities, __global int* occupied, __global c
    const int sizeXZ = size.x * size.z;
    uchar blockNeighbourInfo = 0;
 
-   if ( densities[index] == 0 || coord.x == 0 || coord.y == 0 || coord.z == 0 || coord.x == get_global_size(0) -1 || coord.y == get_global_size(0) -1 || coord.z == get_global_size(0) -1 )
+
+   if ( densities[index] == 0 || coord.x == 0 || coord.y == 0 || coord.z == 0 
+                              || coord.x == get_global_size(0) -1 || coord.y == get_global_size(0) -1 || coord.z == get_global_size(0) -1 )
    {
       occupied[index] = 0;
       return;
    }
+
+
+   if ( (densities[index] == 1) && ( coord.x == 1 ) )
+   {
+  /*    occupied[index] = 1;
+      cl_block_info_t outputPtr;
+		outputPtr.block_info = 1;
+		outputPtr.grid_pos[0] = (coord.x);
+		outputPtr.grid_pos[1] = (coord.y);
+		outputPtr.grid_pos[2] = (coord.z);
+		output[index] = outputPtr;
+      return;*/
+   }
+
+
 
    const int3 f1 = coord + (int3)( 1, 0, 0 );
    const int3 f2 = coord - (int3)( 1, 0, 0 );
@@ -173,6 +255,6 @@ test(__global int* densities, cl_float3_t world_pos, float res, uchar level)
 
    const uint index = ((coord.y * size * size)) + ((coord.z * size)) + (coord.x);
 
-   densities[index] = densities3d(position, level) <= 0.0f ? 1 : 0;
+   densities[index] = densities3d(position, level) < 0.0f ? 1 : 0;
 
 }

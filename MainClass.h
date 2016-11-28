@@ -89,10 +89,10 @@ private:
 	boost::shared_ptr<GfxApi::VertexBuffer> m_pVertices;
 	boost::shared_ptr<GfxApi::Mesh> m_pMesh;
 
-	boost::shared_ptr<GfxApi::Texture> m_tex;
-	boost::shared_ptr<GfxApi::Texture> m_tex1;
-	boost::shared_ptr<GfxApi::Texture> m_tex2;
-	boost::shared_ptr<GfxApi::Texture> m_tex3;
+	//boost::shared_ptr<GfxApi::Texture> m_tex;
+	//boost::shared_ptr<GfxApi::Texture> m_tex1;
+	//boost::shared_ptr<GfxApi::Texture> m_tex2;
+	//boost::shared_ptr<GfxApi::Texture> m_tex3;
 
 };
 

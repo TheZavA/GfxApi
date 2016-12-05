@@ -6,8 +6,6 @@
 #include <set>
 
 #include <boost/shared_ptr.hpp>
-#include <boost/scoped_ptr.hpp>
-#include <boost/enable_shared_from_this.hpp>
 
 #include "common.h"
 #include "mgl/MathGeoLib.h"
@@ -29,22 +27,19 @@ public:
    ChunkManager( Frustum& camera );
    ~ChunkManager( void );
 
-   static const int CHUNK_SIZE = 32;
-   static const int MAX_LOD_LEVEL = 12;
+   static const int CHUNK_SIZE = 64;
+   static const int MAX_LOD_LEVEL = 11;
 
    static const int WORLD_BOUNDS_MIN_XZ = -512000;
    static const int WORLD_BOUNDS_MIN_Y = -512000;
    static const int WORLD_BOUNDS_MAX_XZ = 512000;
-   static const int WORLD_BOUNDS_MAX_Y = 512000;
+   static const int WORLD_BOUNDS_MAX_Y = 512000 ;
 
    typedef TOctree< boost::shared_ptr< NodeChunk > > ChunkTree;
 
    typedef std::set< boost::shared_ptr< NodeChunk > > NodeChunks;
 
-   boost::shared_ptr < TVolume3d<cell_t*> > m_pCellBuffer;
-
    boost::shared_ptr< ChunkTree > m_pOctTree;
-
 
    NodeChunks m_visibles;
 
@@ -64,7 +59,6 @@ public:
    /// chunks pending generation or in generation process
    uint32_t m_chunks_pending;
 
-   void initTree( ChunkTree& pChild );
    void initTree( boost::shared_ptr<ChunkTree> pChild );
    void initTreeNoQueue( boost::shared_ptr<ChunkTree> pChild );
 
@@ -77,8 +71,6 @@ public:
    void chunkContourThread();
 
    bool isAcceptablePixelError( float3& cameraPos, ChunkTree& tree );
-
-   void updateLoDTree( Frustum& camera );
 
    void updateLoDTree2( Frustum& camera );
 
@@ -94,8 +86,6 @@ public:
    std::vector< boost::shared_ptr< GfxApi::ShaderProgram > > m_shaders;
 
    boost::shared_ptr< GfxApi::ShaderProgram > m_pLastShader;
-
-   //std::vector< VertexPositionNormal> m_mdcVertices;
 
 };
 

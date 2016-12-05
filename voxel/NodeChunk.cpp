@@ -4,8 +4,6 @@
 #include "../ocl.h"
 #include "../MainClass.h"
 
-#include "../cubelib/cube.hpp"
-
 NodeChunk::NodeChunk( float scale, const AABB& bounds, ChunkManager* pChunkManager, bool hasNodes )
    : m_scale( scale )
    , m_chunk_bounds( bounds )
@@ -27,7 +25,6 @@ NodeChunk::~NodeChunk()
 
 void NodeChunk::generateDensities()
 {
-
    int tree_level = m_pTree->getLevel();
 
    // size of the border to be generated
@@ -52,6 +49,26 @@ void NodeChunk::classifyBlocks()
    }
 }
 
+uint16_t NodeChunk::getOrCreateVertex( uint8_t x, uint8_t y, uint8_t z )
+{
+   uint16_t index = 0;
+   uint32_t mapIndex = ( uint32_t )x << 0 | ( uint32_t )y << 8 | ( uint32_t )z << 16;
+   auto it = m_vertexToIndex.find( mapIndex );
+   if( it != m_vertexToIndex.end() )
+      return it->second;
+   else
+   {
+      index = m_vertices.size();
+      m_vertices.push_back( cl_vertex_t( x, y, z ) );
+      m_vertexToIndex[mapIndex] = index;
+   }
+
+   //index = m_vertices.size();
+   //m_vertices.push_back( cl_vertex_t( x, y, z ) );
+
+   return index;
+}
+
 boost::shared_ptr<GfxApi::Mesh> NodeChunk::getMeshPtr()
 {
    return m_pMesh;
@@ -72,32 +89,67 @@ void NodeChunk::generateVertices()
       {
          uint8_t mask = 1 << i;
          if( vertex.block_info & mask )
-         {
-            int highestIndex = m_vertices.size();
-            for( int c = 0; c < 4; c++ )
+         {  
+            int16_t i1 = 0;
+            int16_t i2 = 0;
+            int16_t i3 = 0;
+            int16_t i4 = 0;
+           /* if( ( x == 0 ) && ( mask == 16 ) && ( vertex.block_info & mask ) )
             {
-               uint8_t x1 = faceList[i][c][0];
-               uint8_t y1 = faceList[i][c][1];
-               uint8_t z1 = faceList[i][c][2];
-
-               uint8_t nx = faceList[i][5][0];
-               uint8_t ny = faceList[i][5][1];
-               uint8_t nz = faceList[i][5][2];
-
-               m_vertices.push_back( cl_vertex_t( x + x1, y + y1, z + z1, nx, ny, nz ) );
+               i1 = getOrCreateVertex( x + faceList[i][0][0], y + faceList[i][0][1], z + faceList[i][0][2] );
+               i2 = getOrCreateVertex( x + faceList[i][1][0], y + faceList[i][1][1], z + faceList[i][1][2] );
+               i3 = getOrCreateVertex( x + faceList[i][2][0], std::max( ( int ) y - 2, 0 ), z + faceList[i][2][2] );
+               i4 = getOrCreateVertex( x + faceList[i][3][0], std::max( ( int ) y - 2, 0 ), z + faceList[i][3][2] );
+            }
+            else if( ( x == 63 ) && ( mask == 32 ) && ( vertex.block_info & mask ) )
+            {
+               i1 = getOrCreateVertex( x + faceList[i][0][0], y + faceList[i][0][1], z + faceList[i][0][2] );
+               i2 = getOrCreateVertex( x + faceList[i][1][0], y + faceList[i][1][1], z + faceList[i][1][2] );
+               i3 = getOrCreateVertex( x + faceList[i][2][0], std::max( ( int ) y - 2, 0 ), z + faceList[i][2][2] );
+               i4 = getOrCreateVertex( x + faceList[i][3][0], std::max( ( int ) y - 2, 0 ), z + faceList[i][3][2] );
+            }
+            else*/ if( ( z == 0 ) && ( mask == 8 ) && ( vertex.block_info & mask ) )
+            {
+               i1 = getOrCreateVertex( x + faceList[i][0][0], y + faceList[i][0][1], z + faceList[i][0][2] );
+               i2 = getOrCreateVertex( x + faceList[i][1][0], y + faceList[i][1][1], z + faceList[i][1][2] );
+               i3 = getOrCreateVertex( x + faceList[i][2][0], std::max( ( int ) y - 2, 0 ), z + faceList[i][2][2] );
+               i4 = getOrCreateVertex( x + faceList[i][3][0], std::max( ( int ) y - 2, 0 ), z + faceList[i][3][2] );
+            }
+            else if( ( z == 63 ) && ( mask == 4 ) && ( vertex.block_info & mask ) )
+            {
+               i1 = getOrCreateVertex( x + faceList[i][0][0], std::max( ( int ) y - 2, 0 ), z + faceList[i][0][2] );
+               i2 = getOrCreateVertex( x + faceList[i][1][0], y + faceList[i][1][1], z + faceList[i][1][2] );
+               i3 = getOrCreateVertex( x + faceList[i][2][0], y + faceList[i][2][1], z + faceList[i][2][2] );
+               i4 = getOrCreateVertex( x + faceList[i][3][0], std::max( ( int ) y - 2, 0 ), z + faceList[i][3][2] );
+            }
+            else
+            {
+               i1 = getOrCreateVertex( x + faceList[i][0][0], y + faceList[i][0][1], z + faceList[i][0][2] );
+               i2 = getOrCreateVertex( x + faceList[i][1][0], y + faceList[i][1][1], z + faceList[i][1][2] );
+               i3 = getOrCreateVertex( x + faceList[i][2][0], y + faceList[i][2][1], z + faceList[i][2][2] );
+               i4 = getOrCreateVertex( x + faceList[i][3][0], y + faceList[i][3][1], z + faceList[i][3][2] );
             }
 
-            m_indices.push_back( highestIndex );
-            m_indices.push_back( highestIndex + 1 );
-            m_indices.push_back( highestIndex + 2 );
 
-            m_indices.push_back( highestIndex + 2 );
-            m_indices.push_back( highestIndex + 3 );
-            m_indices.push_back( highestIndex );
+            m_indices.push_back( i1 );
+            m_indices.push_back( i2 );
+            m_indices.push_back( i3 );
 
+            m_indices.push_back( i3 );
+            m_indices.push_back( i4 );
+            m_indices.push_back( i1 );
          }
       }
    }
+   m_vertexToIndex.clear();
+
+}
+
+void NodeChunk::generateLocalAO()
+{
+   if( !m_compactedBlocks || m_compactedBlocks->size() < 1 )
+      return;
+
    m_pChunkManager->m_ocl->calulateBlockAO( m_vertices.size(), m_vertices );
 }
 
@@ -110,7 +162,6 @@ void NodeChunk::createMesh()
    
    GfxApi::VertexDeclaration decl;
    decl.Add( GfxApi::VertexElement( GfxApi::VertexDataSemantic::VCOORD, GfxApi::VertexDataType::UNSIGNED_BYTE, 3, "vertex_position" ) );
-   decl.Add( GfxApi::VertexElement( GfxApi::VertexDataSemantic::NORMAL, GfxApi::VertexDataType::BYTE, 3, "vertex_normal" ) );
    decl.Add( GfxApi::VertexElement( GfxApi::VertexDataSemantic::TCOORD, GfxApi::VertexDataType::UNSIGNED_BYTE, 1, "vertex_ao" ) );
    //decl.Add( GfxApi::VertexElement( GfxApi::VertexDataSemantic::TCOORD, GfxApi::VertexDataType::UNSIGNED_BYTE, 2, "vertex_material" ) );
 
@@ -133,12 +184,8 @@ void NodeChunk::createMesh()
       vbPtr[offset + 0] = vertexInf.px;
       vbPtr[offset + 1] = vertexInf.py;
       vbPtr[offset + 2] = vertexInf.pz;
-      vbPtr[offset + 3] = vertexInf.nx;
-      vbPtr[offset + 4] = vertexInf.ny;
-      vbPtr[offset + 5] = vertexInf.nz;
-      vbPtr[offset + 6] = vertexInf.localAO;
+      vbPtr[offset + 3] = vertexInf.localAO;
    //   *( int* ) ( &vbPtr[offset + 7] ) = 0;
-      offset += 3;
       offset += 3;
       offset += 1;
       //offset += 2;
@@ -174,28 +221,7 @@ void NodeChunk::createMesh()
    m_vertices.clear();
    m_indices.clear();
 
+   m_compactedBlocks->clear();
    m_compactedBlocks.reset();
 
-}
-
-
-
-void NodeChunk::generate( float threshold )
-{
-
- /*  std::vector< OctreeNodeMdc > octreeNodes( 40000 );
-   m_nodeIdxCurr = 1;
-   ConstructBase( &octreeNodes[0], ChunkManager::CHUNK_SIZE, octreeNodes );
-
-   ( &octreeNodes[0] )->ClusterCellBase( threshold, octreeNodes );
-
-   ( &octreeNodes[0] )->GenerateVertexBuffer( m_mdcVertices, octreeNodes );
-
-   ( &octreeNodes[0] )->ProcessCell( m_indices, m_tri_count, threshold, octreeNodes );
-
-   m_tri_count.clear();
-   m_pCellBuffer.reset();
-   m_compactCorners.reset();
-   m_edgesCompact.reset();
-   m_zeroCrossCompact.reset();*/
 }

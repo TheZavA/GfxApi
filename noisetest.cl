@@ -1333,11 +1333,11 @@ float densities3d(float3 pos, uchar level)
    //level = 14;
 	     
    float mask = clamp(fBM((float2)(pos.x, pos.z), 0.00001f, 2.12f, 9), 0.0f, 1.0f);
-   float mask2 = clamp(fBM((float2)(pos.x + 80000, pos.z), 0.00004f, 2.12f, 12), 0.0f, 1.0f);
+   float mask2 = clamp(fBM((float2)(pos.x + 80000, pos.z), 0.00004f, 2.12f, 9), 0.0f, 1.0f);
 
    float baseMountain = fBM((float2)(mod_pos.x - 2000, mod_pos.z), 0.016f, 2.19f, min((int)(level), 3));
    float billow = fBM((float2)(mod_pos.x - 4000, mod_pos.z), 0.009f, 2.19f,  min((int)(level), 5));
-   float detail = fabs(ridgedmultifractal2d((float2)(mod_pos.x - 14000, mod_pos.z - 8000), 0.045, 2.233, 0, min((int)(level), 12)));
+   float detail = fabs(ridgedmultifractal2d((float2)(mod_pos.x - 14000, mod_pos.z - 8000), 0.045, 2.233, 0, min((int)(level), 9)));
 
    if( pos.y > 900 )
    {

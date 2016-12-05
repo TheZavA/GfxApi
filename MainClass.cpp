@@ -174,7 +174,6 @@ int MainClass::initGLEW()
 
 void MainClass::initCamera()
 {
-
    m_camera.pos = float3( 24434, 4600, 4279 );
    m_camera.front = float3( 0, 0, 1 );
    m_camera.up = float3( 0, 1, 0 );
@@ -211,7 +210,6 @@ bool MainClass::init()
    glDepthFunc( GL_LESS );
 
    m_lastTick = Clock::Tick();
-
 
    return true;
 }
@@ -254,22 +252,7 @@ void MainClass::mainLoop()
 {
    init();
 
-
    m_pChunkManager = boost::make_shared<ChunkManager>( m_camera );
-
-
-
-   //tex.loadBMP("rock.bmp", 0);
-
-
-   //GfxApi::Texture tex2;
-   //tex2.loadBMP("grass.bmp", 1);
-
-   //GfxApi::Texture tex3;
-   //tex3.loadBMP("normal.bmp", 2);
-
-   //GfxApi::Texture tex4;
-   //tex4.loadBMP("grass_normal.bmp", 3);
 
    std::vector<float3> out_vertices;
    std::vector<float2> out_uvs;
@@ -277,78 +260,6 @@ void MainClass::mainLoop()
 
    std::vector<int> m_Entries;
    std::vector<int> m_Textures;
-
-   //Assimp::Importer importer;
-   //const aiScene* pScene = importer.ReadFile("castle.3ds", aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_MakeLeftHanded);
-
-   //m_Entries.resize(pScene->mNumMeshes);
-   //m_Textures.resize(pScene->mNumMaterials);
-
-   ////for (unsigned int i = 0; i < m_Entries.size(); i++) {
-   //	const aiMesh* paiMesh = pScene->mMeshes[0];
-   //	//InitMesh(i, paiMesh);
-   ////}
-
-   //aiVector3D Zero3D(0.0f, 0.0f, 0.0f);
-
-   ////loadOBJ("castle01.obj", out_vertices, out_uvs, out_normals);
-
-   //GfxApi::VertexDeclaration decl;
-   //decl.add(GfxApi::VertexElement(GfxApi::VertexDataSemantic::VCOORD, GfxApi::VertexDataType::FLOAT, 3, "vertex_position"));
-   //decl.add(GfxApi::VertexElement(GfxApi::VertexDataSemantic::NORMAL, GfxApi::VertexDataType::FLOAT, 3, "vertex_normal"));
-   //boost::shared_ptr<GfxApi::VertexBuffer> pVertexBuffer = boost::make_shared<GfxApi::VertexBuffer>(paiMesh->mNumVertices, decl);
-   //boost::shared_ptr<GfxApi::IndexBuffer> pIndexBuffer = boost::make_shared<GfxApi::IndexBuffer>(paiMesh->mNumFaces*3, decl, GfxApi::PrimitiveIndexType::Indices32Bit);
-   //unsigned int * ibPtr = reinterpret_cast<unsigned int*>(pIndexBuffer->getCpuPtr());
-   //float * vbPtr = reinterpret_cast<float*>(pVertexBuffer->getCpuPtr());
-   //uint32_t offset = 0;
-
-   //for (unsigned int i = 0; i < paiMesh->mNumVertices; i++) 
-   //{
-   //	
-   //	const aiVector3D* pPos = &(paiMesh->mVertices[i]);
-
-   //	const aiVector3D* pNormal = &(paiMesh->mNormals[i]);
-   //
-   //	const aiVector3D* pTexCoord = paiMesh->HasTextureCoords(0) ? &(paiMesh->mTextureCoords[0][i]) : &Zero3D;
-
-   //	vbPtr[offset + 0] = pPos->x;
-   //	vbPtr[offset + 1] = pPos->y;
-   //	vbPtr[offset + 2] = pPos->z;
-   //	vbPtr[offset + 3] = pNormal != 0 ? pNormal->x : 0;
-   //	vbPtr[offset + 4] = pNormal != 0 ? pNormal->y : 0;
-   //	vbPtr[offset + 5] = pNormal != 0 ? pNormal->z : 0;
-   //	offset += 6;
-   //
-   //}
-
-   //pVertexBuffer->allocateGpu();
-   //pVertexBuffer->updateToGpu();
-
-   //offset = 0;
-   //for (unsigned int i = 0; i < paiMesh->mNumFaces; i++)
-   //{
-   //	const aiFace& Face = paiMesh->mFaces[i];
-   //	ibPtr[offset] = Face.mIndices[0];
-   //	ibPtr[offset + 1] = Face.mIndices[1];
-   //	ibPtr[offset + 2] = Face.mIndices[2];
-   //	offset += 3;
-   //}
-
-   //pIndexBuffer->allocateGpu();
-   //pIndexBuffer->updateToGpu();
-
-   //auto mesh = boost::make_shared<GfxApi::Mesh>(GfxApi::PrimitiveType::TriangleList);
-   //mesh->m_vbs.push_back(pVertexBuffer);
-   //mesh->m_ib.swap(pIndexBuffer);
-
-   //mesh->m_sp = m_pChunkManager->m_shaders[0];
-
-   //mesh->generateVAO();
-   //mesh->linkShaders();
-
-   //m_pMesh = mesh;
-
-   //btDefaultCollisionConfiguration* collisionConfiguration = new btDefaultCollisionConfiguration();
 
    while( !m_exiting )
    {
@@ -456,19 +367,12 @@ void MainClass::onTick()
    m_lastTick = Clock::Tick();
 
    if( m_bNoCamUpdate )
-   {
       m_pChunkManager->updateLoDTree2( m_cameraFrozen );
-   }
    else
-   {
       m_pChunkManager->updateLoDTree2( m_camera );
-   }
-
 
    if( glfwWindowShouldClose( m_pWindow ) )
-   {
       throw std::runtime_error( "window was closed" );
-   }
 
    if( glfwGetWindowAttrib( m_pWindow, GLFW_FOCUSED ) )
    {
@@ -484,13 +388,9 @@ void MainClass::onTick()
    glfwMakeContextCurrent( m_pWindow );
 
    if( !m_bHideTerrain )
-   {
-      m_graphics.Clear( true, true, true, 0.5, 0.6, 0.8 );
-   }
+      m_graphics.Clear( true, true, true, 0.5, 0.6, 0.9 );
    else
-   {
       m_graphics.Clear( true, true, true, 0, 0, 0 );
-   }
 
    //printf("%f, %f, %f \n", m_camera.pos.x, m_camera.pos.y, m_camera.pos.z);
 
@@ -502,13 +402,11 @@ void MainClass::onTick()
       if( visible->m_pMesh )
       {
          if( !m_camera.Intersects( visible->m_chunk_bounds ) )
-         {
             continue;
-         }
 
             m_pChunkManager->m_shaders[0]->Use();
             m_pChunkManager->m_shaders[0]->SetUniform( m_camera.ViewProjMatrix(), "worldViewProj" );
-            //m_pChunkManager->m_shaders[0]->SetUniform( m_camera.pos.x, m_camera.pos.y, m_camera.pos.z, "cameraPos" );
+            m_pChunkManager->m_shaders[0]->SetUniform( m_camera.pos.x, m_camera.pos.y, m_camera.pos.z, "cameraPos" );
 
      
 
@@ -540,12 +438,11 @@ void MainClass::onTick()
       if( visible->m_pMesh )
       {
          if( !m_camera.Intersects( visible->m_chunk_bounds ) )
-         {
             continue;
-         }
+
          m_pChunkManager->m_shaders[0]->Use();
          m_pChunkManager->m_shaders[0]->SetUniform( m_camera.ViewProjMatrix(), "worldViewProj" );
-         //m_pChunkManager->m_shaders[0]->SetUniform( m_camera.pos.x, m_camera.pos.y, m_camera.pos.z, "cameraPos" );
+         m_pChunkManager->m_shaders[0]->SetUniform( m_camera.pos.x, m_camera.pos.y, m_camera.pos.z, "cameraPos" );
 
          double scale = ( 1.0f / ChunkManager::CHUNK_SIZE ) * ( visible->m_chunk_bounds.MaxX() - visible->m_chunk_bounds.MinX() );
 

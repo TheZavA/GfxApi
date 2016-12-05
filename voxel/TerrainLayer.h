@@ -2,7 +2,7 @@
 #define _TERRAINLAYER_H
 
 #include "common.h"
-#include <boost\shared_ptr.hpp>
+
 /// What kind of noise is going to be used
 enum class NoiseType
 {

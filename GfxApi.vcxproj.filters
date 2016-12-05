@@ -14,9 +14,6 @@
     <Filter Include="tinyxml2">
       <UniqueIdentifier>{16c96457-45e7-4e73-87e9-5faaa77a950a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="cubelib">
-      <UniqueIdentifier>{5c4e508d-8ead-4ea7-a99b-05b3d5b2fef8}</UniqueIdentifier>
-    </Filter>
     <Filter Include="cl_programs">
       <UniqueIdentifier>{7571583c-c93a-449e-a58a-d92e8e2d463a}</UniqueIdentifier>
     </Filter>
@@ -38,15 +35,6 @@
       <Filter>tinyxml2</Filter>
     </ClInclude>
     <ClInclude Include="MainClass.h" />
-    <ClInclude Include="cubelib\cube.hpp">
-      <Filter>cubelib</Filter>
-    </ClInclude>
-    <ClInclude Include="cubelib\cube.inl.hpp">
-      <Filter>cubelib</Filter>
-    </ClInclude>
-    <ClInclude Include="cubelib\logic_utility.hpp">
-      <Filter>cubelib</Filter>
-    </ClInclude>
     <ClInclude Include="GfxApi.h">
       <Filter>GfxApi</Filter>
     </ClInclude>
@@ -59,13 +47,7 @@
     <ClInclude Include="cl.hpp">
       <Filter>GfxApi</Filter>
     </ClInclude>
-    <ClInclude Include="voxel\qef.h">
-      <Filter>voxel</Filter>
-    </ClInclude>
     <ClInclude Include="voxel\ChunkManager.h">
-      <Filter>voxel</Filter>
-    </ClInclude>
-    <ClInclude Include="voxel\svd.h">
       <Filter>voxel</Filter>
     </ClInclude>
     <ClInclude Include="voxel\common.h">
@@ -85,9 +67,6 @@
     </ClInclude>
     <ClInclude Include="Input.h" />
     <ClInclude Include="voxel\TerrainLayer.h" />
-    <ClInclude Include="voxel\utilities.h">
-      <Filter>voxel</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="tinyxml2\tinyxml2.cpp">
@@ -98,13 +77,7 @@
     <ClCompile Include="GfxApi.cpp">
       <Filter>GfxApi</Filter>
     </ClCompile>
-    <ClCompile Include="voxel\qef.cpp">
-      <Filter>voxel</Filter>
-    </ClCompile>
     <ClCompile Include="voxel\ChunkManager.cpp">
-      <Filter>voxel</Filter>
-    </ClCompile>
-    <ClCompile Include="voxel\svd.cpp">
       <Filter>voxel</Filter>
     </ClCompile>
     <ClCompile Include="voxel\NodeChunk.cpp">

@@ -89,9 +89,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="cl.hpp" />
-    <ClInclude Include="cubelib\cube.hpp" />
-    <ClInclude Include="cubelib\cube.inl.hpp" />
-    <ClInclude Include="cubelib\logic_utility.hpp" />
     <ClInclude Include="GfxApi.h" />
     <ClInclude Include="glcommon.h" />
     <ClInclude Include="Input.h" />
@@ -101,8 +98,6 @@
     <ClInclude Include="voxel\ChunkManager.h" />
     <ClInclude Include="voxel\common.h" />
     <ClInclude Include="voxel\NodeChunk.h" />
-    <ClInclude Include="voxel\qef.h" />
-    <ClInclude Include="voxel\svd.h" />
     <ClInclude Include="voxel\TBorderVolume3d.h" />
     <ClInclude Include="voxel\TerrainLayer.h" />
     <ClInclude Include="voxel\TOctree.h" />
@@ -110,7 +105,6 @@
     <ClInclude Include="voxel\TVolume2d.h" />
     <ClInclude Include="voxel\TVolume3d.h" />
     <ClInclude Include="voxel\TVolumePool.h" />
-    <ClInclude Include="voxel\utilities.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GfxApi.cpp" />
@@ -120,8 +114,6 @@
     <ClCompile Include="tinyxml2\tinyxml2.cpp" />
     <ClCompile Include="voxel\ChunkManager.cpp" />
     <ClCompile Include="voxel\NodeChunk.cpp" />
-    <ClCompile Include="voxel\qef.cpp" />
-    <ClCompile Include="voxel\svd.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="chunk_kernel.cl" />

@@ -1,10 +1,9 @@
 #version 400
 
-in vec3 normal;
 in vec3 pos;
 in vec4 world_pos;
-in float material;
 in float ao;
+in vec3 normal;
 
 uniform float res;
 
@@ -68,79 +67,27 @@ vec3 applyFog3( in vec3  rgb,     // original color of the pixel
    return mix(rgb, vec3(0.5,0.6,0.9), fogAmount);
 }
 
-vec4 mapZoom(sampler2D texture)
-{
-
-	//vec3 blending = abs( normal );
-	//blending = normalize(max(blending, 0.00001)); // Force weights to sum to 1.0
-	//float b = (blending.x + blending.y + blending.z);
-	//blending /= vec3(b, b, b);
-
-  //  vec3 blending = abs( normal );
-//	blending = normalize(max(blending, 0.00001)); // Force weights to sum to 1.0
-//	float b = (blending.x + (blending.y) + blending.z);
-//	blending /= vec3(b, b, b);
-
-
-    vec3 flip = vec3(normal.x < 0.0 ? -1 : 1, normal.y < 0.0 ? -1 : 1, normal.z < 0.0 ? -1 : 1);
-    vec3 blending = clamp(abs(normalize(normal)) - 0.5, 0.0, 1.0);
-    vec3 tmpPos = pos.xyz *flip;
-
-    blending *= blending; 
-    blending *= blending; 
-    blending /= dot(blending, vec3(1.0, 1.0, 1.0));
-
-    float t = 1.0f / (25000.0f / distance(cameraPos, world_pos.xyz));
-
-    vec4 xaxis = mix(texture2D(texture, pos.yz * res / 10 ),
-                       texture2D(texture, pos.yz * res / 200),
-                       t);
-
-    vec4 yaxis = mix(texture2D(texture, pos.xz * res / 10),
-                       texture2D(texture, pos.xz * res / 200),
-                       t);
-
-    vec4 zaxis = mix(texture2D(texture, pos.xy * res / 10 ),
-                       texture2D(texture, pos.xy * res / 200),
-                       t);
-
-    
-    vec4 tex = xaxis * blending.x + yaxis * blending.y + zaxis * blending.z;
-    //return vec4(t,t,t,tex.x);
-	return tex;
-}
-
-/*vec4 mapTriPlanar(sampler2D texture)
-{
-    
-    vec3 flip = vec3(normal.x < 0.0 ? -1 : 1, normal.y >= 0.0 ? -1 : 1, normal.z < 0.0 ? -1 : 1);
-    vec3 blend = saturate(abs(normalize(normal)) - 0.5);
-    vec3 tmpPos = pos.xyz * flip;
-
-    blend *= blend; 
-    blend *= blend; 
-    blend /= dot(blend, vec3(1.0, 1.0, 1.0));
-
-	//vec3 blending = abs( normal );
-	//blending = normalize(max(blending, 0.00001)); // Force weights to sum to 1.0
-	//float b = (blending.x + (-blending.y) + blending.z);
-	//blending /= vec3(b, b, b);
-
-	vec4 xaxis = texture2D( texture, tmpPos.yz * res *0.2);
-	vec4 yaxis = texture2D( texture, tmpPos.xz * res *0.2);
-	vec4 zaxis = texture2D( texture, tmpPos.xy * res *0.2);
-
-	// blend the results of the 3 planar projections.
-	vec4 tex = xaxis * blend.x + yaxis * blend.y + zaxis * blend.z;
-	return tex;
-}*/
-
 void main () 
 {
-   
-   vec3 n1 = normalize(vec3(normal.x, -normal.y, normal.z));
+   vec3 dFdxPos = dFdx( world_pos.rgb );
+	vec3 dFdyPos = dFdy( world_pos.rgb );
+	vec3 facenormal = normalize( cross(dFdxPos,dFdyPos ));
+
+   vec3 n1 = normalize(vec3(facenormal.x, facenormal.y, facenormal.z));
    float intensity = clamp( dot( n1, vec3(0.4, 0.8, 0.2)), 0, 1 );
-   frag_colour = (vec4(0.8,0.8,0.8,0) * (intensity * 2) + vec4(0.2,0.2,0.2,0)) * ao;
+   //frag_colour = vec4(0.8,0.8,0.8,0) * (intensity * 2);
+   //frag_colour = vec4(ao,ao,ao,0);
+   frag_colour = (vec4(0.8,0.8,0.8,0) * (intensity) + vec4(0.4,0.4,0.4,0) ) * ao;
+
+   //vec3 color =  applyFog3( vec3(frag_colour.rgb ) ,
+	//					distance(cameraPos, world_pos.xyz),
+	//					normalize(cameraPos - world_pos.xyz));
+
+   vec3 color =  applyFog2( vec3(frag_colour.rgb ) ,
+							 distance(cameraPos, world_pos.xyz),
+							 normalize(cameraPos - world_pos.xyz));
+
+   frag_colour = vec4(vec3(color.rgb), 1);
    return;
 	
 	

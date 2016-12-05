@@ -4,7 +4,6 @@
 #include <vector>
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
-#include <boost/foreach.hpp>
 
 #include <boost/chrono.hpp>
 
@@ -348,35 +347,7 @@ struct ocl_t
 
    }
 
-   void generateZeroCrossing( std::vector<edge_t>& r, float worldx, float worldy, float worldz, float res, uint8_t level )
-   {
-      std::size_t unit_size = 1;
-      std::size_t units = r.size();
-
-      // create buffers on the device
-      cl::Buffer ocl_r( *context, CL_MEM_READ_WRITE, r.size()*sizeof( edge_t ) );
-
-      //create queue to which we will push commands for the device.
-      cl::CommandQueue queue( *context, default_device );
-
-      queue.enqueueWriteBuffer( ocl_r, CL_TRUE, 0, r.size()*sizeof( edge_t ), &r[0] );
-
-      //run the kernel
-      cl::make_kernel<cl::Buffer&, cl_float3_t, float, uint8_t> genZeroCross( cl::Kernel( *program, "genZeroCross" ) );
-
-      cl::EnqueueArgs eargs( queue, cl::NDRange( units ) );
-
-      cl_float3_t pos;
-      pos.x = worldx;
-      pos.y = worldy;
-      pos.z = worldz;
-
-      genZeroCross( eargs, ocl_r, pos, res, level );
-
-      //read result C from the device to array C
-      queue.enqueueReadBuffer( ocl_r, CL_TRUE, 0, r.size()*sizeof( edge_t ), &r[0] );
-
-   }
+ 
 
 
    bool IsPowerOfTwo( int n )

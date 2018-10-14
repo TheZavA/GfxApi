@@ -155,7 +155,7 @@ bool ChunkManager::isAcceptablePixelError( float3& cameraPos, ChunkTree& tree )
 
    //All nodes within this distance will surely be rendered
    //float f_0 = x_0 * 1.9f;
-   float f_0 = x_0 * 1.5f;
+   float f_0 = x_0 * 2.0f;
 
    float3 delta = cameraPos - box.CenterPoint();
    //Node distance from camera
@@ -174,7 +174,7 @@ void ChunkManager::updateLoDTree2( Frustum& camera )
 {
 
    /// get the next chunk off the queue that needs its mesh created / uploaded
-   for( std::size_t i = 0; i < 60; ++i )
+   for( std::size_t i = 0; i < 10; ++i )
    {
       auto chunk = m_nodeChunkMeshGeneratorQueue.pop();
       if( !chunk )
@@ -260,7 +260,7 @@ void ChunkManager::updateLoDTree2( Frustum& camera )
       }
       else
       {
-         if( leaf->getValue()->m_bHasNodes || leaf->getLevel() < 3 )
+         if( leaf->getValue()->m_bHasNodes )
          {
 
             /// If visible doesn't have children
@@ -319,7 +319,9 @@ void ChunkManager::updateLoDTree2( Frustum& camera )
 
          auto& chunkRef = leaf->getChild( corner );
 
-         if( chunkRef && chunkRef->getValue() && chunkRef->getValue()->m_bGenerated == false )
+         if( chunkRef && 
+             chunkRef->getValue() && 
+             chunkRef->getValue()->m_bGenerated == false )
          {
             allNodesGenerated = false;
          }
@@ -339,6 +341,7 @@ void ChunkManager::updateLoDTree2( Frustum& camera )
 
 }
 
+uint64_t voxels = 0;
 void ChunkManager::chunkLoaderThread()
 {
    //this has to be in ms or something, not framerate, but time!
@@ -353,7 +356,7 @@ void ChunkManager::chunkLoaderThread()
 
       did_some_work = false;
 
-      std::size_t max_chunks_per_frame = 45;
+      std::size_t max_chunks_per_frame = 30;
 
       for( std::size_t i = 0; i < max_chunks_per_frame; ++i )
       {
@@ -367,13 +370,21 @@ void ChunkManager::chunkLoaderThread()
          if( !chunk->m_pTree )
             continue;
 
+         //chunk->classifyChunk();
+
+         //if( !chunk->m_bHasNodes )
+         {
+           // m_nodeChunkMeshGeneratorQueue.push( chunk );
+            //continue;
+         }
+            
          chunk->generateDensities();
          chunk->classifyBlocks();
+         if( chunk->m_compactedBlocks )
+            voxels += chunk->m_compactedBlocks->size();
          chunk->generateVertices();
          chunk->generateLocalAO();
          m_nodeChunkMeshGeneratorQueue.push( chunk );
-
-         //m_nodeChunkContourGeneratorQueue.push( chunk );
 
          did_some_work = true;
 
@@ -402,7 +413,7 @@ void ChunkManager::chunkContourThread()
 
       did_some_work = false;
 
-      std::size_t max_chunks_per_frame = 25;
+      std::size_t max_chunks_per_frame = 30;
 
       for( std::size_t i = 0; i < max_chunks_per_frame; ++i )
       {
@@ -422,7 +433,7 @@ void ChunkManager::chunkContourThread()
       if( !did_some_work )
       {
          //we can afford to poll 10 X a frame or even more, thread will remain 100% idle, because of sleep.
-         std::this_thread::sleep_for( frametime / 10 );
+         std::this_thread::sleep_for( frametime / 5 );
       }
 
 

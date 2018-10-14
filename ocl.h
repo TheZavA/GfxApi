@@ -163,7 +163,7 @@ struct ocl_t
 
       std::string str;
 
-      std::vector<std::string> source_container;
+      std::vector< std::string > source_container;
 
       for( auto source_path : source_paths )
 
@@ -177,7 +177,7 @@ struct ocl_t
          {
             std::cout << e.what() << '\n';
          }
-         std::string str1 = std::string( ( std::istreambuf_iterator<char>( t ) ),
+         std::string str1 = std::string( std::istreambuf_iterator<char>( t ),
                                          std::istreambuf_iterator<char>() );
 
          source_container.push_back( str1 );
@@ -185,14 +185,14 @@ struct ocl_t
          sources.push_back( std::make_pair( source_container.back().c_str(), source_container.back().length() ) );
       }
 
-      std::vector<cl::Device> build_devices;
+      std::vector< cl::Device > build_devices;
       build_devices.push_back( default_device );
 
       std::cout << "building program" << std::endl << std::flush;
       program = boost::make_shared<cl::Program>( *context, sources );
       if( program->build( build_devices ) != CL_SUCCESS )
       {
-         std::cout << " Error building: " << program->getBuildInfo<CL_PROGRAM_BUILD_LOG>( default_device ) << "\n";
+         std::cout << " Error building: " << program->getBuildInfo< CL_PROGRAM_BUILD_LOG >( default_device ) << "\n";
          exit( 1 );
       }
 
@@ -200,19 +200,19 @@ struct ocl_t
 
       m_queue = cl::CommandQueue( *context, default_device );
 
-      m_edge_buffer = boost::make_shared<cl::Buffer>( *context, CL_MEM_READ_WRITE, m_numVoxels2Border*sizeof( cl_block_info_t ) );
-      m_occupied_buffer = boost::make_shared<cl::Buffer>( *context, CL_MEM_READ_WRITE, m_numVoxels2Border*sizeof( uint32_t ) );
-      m_occupied_scan_buffer = boost::make_shared<cl::Buffer>( *context, CL_MEM_READ_WRITE, m_numVoxels2Border*sizeof( uint32_t ) );
-      m_density_buffer = boost::make_shared<cl::Buffer>( *context, CL_MEM_READ_WRITE, m_numVoxels2Border*sizeof( uint32_t ) );
+      m_edge_buffer = boost::make_shared< cl::Buffer >( *context, CL_MEM_READ_WRITE, m_numVoxels2Border * sizeof( cl_block_info_t ) );
+      m_occupied_buffer = boost::make_shared< cl::Buffer >( *context, CL_MEM_READ_WRITE, m_numVoxels2Border * sizeof( uint32_t ) );
+      m_occupied_scan_buffer = boost::make_shared< cl::Buffer >( *context, CL_MEM_READ_WRITE, m_numVoxels2Border * sizeof( uint32_t ) );
+      m_density_buffer = boost::make_shared< cl::Buffer >( *context, CL_MEM_READ_WRITE, m_numVoxels2Border * sizeof( uint32_t ) );
 
 
-      m_queue.enqueueWriteBuffer( *m_edge_buffer, CL_TRUE, 0, m_numVoxels2Border*sizeof( uint32_t ), nullptr );
-      m_queue.enqueueWriteBuffer( *m_occupied_buffer, CL_TRUE, 0, m_numVoxels2Border*sizeof( uint32_t ), nullptr );
-      m_queue.enqueueWriteBuffer( *m_occupied_scan_buffer, CL_TRUE, 0, m_numVoxels2Border*sizeof( uint32_t ), nullptr );
-      m_queue.enqueueWriteBuffer( *m_density_buffer, CL_TRUE, 0, m_numVoxels2Border*sizeof( uint32_t ), nullptr );
+      m_queue.enqueueWriteBuffer( *m_edge_buffer, CL_TRUE, 0, m_numVoxels2Border * sizeof( uint32_t ), nullptr );
+      m_queue.enqueueWriteBuffer( *m_occupied_buffer, CL_TRUE, 0, m_numVoxels2Border * sizeof( uint32_t ), nullptr );
+      m_queue.enqueueWriteBuffer( *m_occupied_scan_buffer, CL_TRUE, 0, m_numVoxels2Border * sizeof( uint32_t ), nullptr );
+      m_queue.enqueueWriteBuffer( *m_density_buffer, CL_TRUE, 0, m_numVoxels2Border * sizeof( uint32_t ), nullptr );
 
       
-      CreatePartialSumBuffers( 68 * 68 * 68 );
+      CreatePartialSumBuffers( 34 * 34 * 34 );
    }
 
    typedef uint32_t word_t;
@@ -256,49 +256,107 @@ struct ocl_t
       int result = 0;
       m_queue.enqueueReadBuffer( *tempBuffer, CL_TRUE, 0, rn * sizeof( cl_vertex_t ), &blockVertices[0] );
    }
+
+   void calulateGlobalAO( std::size_t rn, std::vector< cl_vertex_t >& blockVertices, float worldx, float worldy, float worldz, float res, uint8_t level )
+   {
+      std::size_t units = blockVertices.size();
+
+      auto tempBuffer = boost::make_shared< cl::Buffer >( *context, CL_MEM_READ_WRITE, rn * sizeof( cl_vertex_t ) );
+
+      m_queue.enqueueWriteBuffer( *tempBuffer, CL_TRUE, 0, rn * sizeof( cl_vertex_t ), &blockVertices[0] );
+
+      cl::Kernel classify_kernel( *program, "calulateGlobalAO" );
+      classify_kernel.setArg( 0, *tempBuffer );
+      cl_float3_t pos;
+      pos.x = worldx;
+      pos.y = worldy;
+      pos.z = worldz;
+      classify_kernel.setArg( 1, pos );
+      classify_kernel.setArg( 2, res );
+      classify_kernel.setArg( 3, level );
+
+      m_queue.enqueueNDRangeKernel( classify_kernel, cl::NullRange, cl::NDRange( units ) );
+
+      int result = 0;
+      m_queue.enqueueReadBuffer( *tempBuffer, CL_TRUE, 0, rn * sizeof( cl_vertex_t ), &blockVertices[0] );
+   }
    
+   bool classifyChunk( float worldx, float worldy, float worldz, float res )
+   {
+      std::size_t numEdges = 12;
+      std::size_t numSamples = 50;
+
+      char buffer[12*50];
+      memset( buffer, 0, 12 * numSamples );
+
+      auto tempBuffer = boost::make_shared<cl::Buffer>( *context, CL_MEM_READ_WRITE, 12 * numSamples );
+
+      m_queue.enqueueWriteBuffer( *tempBuffer, CL_TRUE, 0, 12 * numSamples, buffer );
+
+      cl::Kernel classify_chunk_kernel( *program, "classifyChunk" );
+      classify_chunk_kernel.setArg( 0, *tempBuffer );
+
+      cl_float3_t pos;
+      pos.x = worldx;
+      pos.y = worldy;
+      pos.z = worldz;
+
+      classify_chunk_kernel.setArg( 1, pos );
+      classify_chunk_kernel.setArg( 2, res );
+
+      m_queue.enqueueNDRangeKernel( classify_chunk_kernel, cl::NullRange, cl::NDRange( numEdges, numSamples ) );
+
+      int result = 0;
+      m_queue.enqueueReadBuffer( *tempBuffer, CL_TRUE, 0, 12 * numSamples, buffer );
+
+      for( int x = 0; x < 12 * numSamples; ++x )
+         if( buffer[x] == 1 )
+            return true;
+      return false;
+   }
+
 
    void classifyBlocks( std::size_t rn, std::vector<cl_block_info_t>& compactedBlocks, uint32_t borderSize )
    {
-      std::vector<boost::chrono::duration<int_least64_t, boost::nano>> times;
+      //std::vector<boost::chrono::duration<int_least64_t, boost::nano>> times;
 
       typedef boost::chrono::high_resolution_clock Clock;
       typedef boost::chrono::milliseconds ms;
 
       std::size_t units = rn;
-      auto t1 = Clock::now();
+      //auto t1 = Clock::now();
       cl::Kernel classify_kernel( *program, "classifyBlocks" );
       classify_kernel.setArg( 0, *m_density_buffer );
       classify_kernel.setArg( 1, *m_occupied_buffer );
       classify_kernel.setArg( 2, *m_edge_buffer );
       classify_kernel.setArg( 3, borderSize );
       cl::Event event;
-      t1 = Clock::now();
+      //t1 = Clock::now();
       m_queue.enqueueNDRangeKernel( classify_kernel, cl::NullRange, cl::NDRange( units, units, units ), cl::NDRange( 2, 2, 2 ), NULL, &event );
-      event.wait();
-      auto t22 = Clock::now();
-      times.push_back( t22 - t1 );
+      //event.wait();
+      //auto t22 = Clock::now();
+      //times.push_back( t22 - t1 );
  
-      uint32_t count = rn*rn*rn;
+      uint32_t count = rn * rn * rn;
 
-      t1 = Clock::now();
+      //t1 = Clock::now();
       PreScanBufferRecursive( *m_occupied_scan_buffer, *m_occupied_buffer, GROUP_SIZE, GROUP_SIZE, count, 0 );
 
       int result = 0;
 
-      m_queue.enqueueReadBuffer( *m_occupied_scan_buffer, CL_TRUE, ( count - 1 )*sizeof( uint32_t ), sizeof( uint32_t ), &result );
-      t22 = Clock::now();
-      times.push_back( t22 - t1 );
+      m_queue.enqueueReadBuffer( *m_occupied_scan_buffer, CL_TRUE, ( count - 1 ) * sizeof( uint32_t ), sizeof( uint32_t ), &result );
+      //t22 = Clock::now();
+      //times.push_back( t22 - t1 );
 
 
 
      // m_levelsAllocated = 0;
       //m_scanPartialSums.clear();
       //m_elementsAllocated = 0;
-      t1 = Clock::now();
+      //t1 = Clock::now();
       if( result > 0 )
       {
-         auto compact_buffer = boost::make_shared<cl::Buffer>( *context, CL_MEM_READ_WRITE, result*sizeof( cl_block_info_t ) );
+         auto compact_buffer = boost::make_shared< cl::Buffer >( *context, CL_MEM_READ_WRITE, result * sizeof( cl_block_info_t ) );
          cl::Kernel compact_kernel( *program, "compactBlocks" );
          compact_kernel.setArg( 0, *m_occupied_buffer );
          compact_kernel.setArg( 1, *m_occupied_scan_buffer );
@@ -312,8 +370,8 @@ struct ocl_t
          m_queue.enqueueReadBuffer( *compact_buffer, CL_TRUE, 0, result * sizeof( cl_block_info_t ), &compactedBlocks[0] );
 
       }
-      t22 = Clock::now();
-      times.push_back( t22 - t1 );
+      //t22 = Clock::now();
+      //times.push_back( t22 - t1 );
       //auto t22222 = Clock::now();
 
       //std::cout << t22222 - t111 << "::";
@@ -331,9 +389,9 @@ struct ocl_t
    {
       std::size_t units = rn;
 
-      auto tempBuffer = boost::make_shared<cl::Buffer>( *context, CL_MEM_READ_WRITE, rn*sizeof( uint32_t ) );
+      auto tempBuffer = boost::make_shared< cl::Buffer >( *context, CL_MEM_READ_WRITE, rn * sizeof( uint32_t ) );
 
-      m_queue.enqueueWriteBuffer( *tempBuffer, CL_TRUE, 0, rn*sizeof( cl_int4_t ), r );
+      m_queue.enqueueWriteBuffer( *tempBuffer, CL_TRUE, 0, rn * sizeof( cl_int4_t ), r );
 
       cl::Kernel classify_kernel( *program, "computeCorners" );
       classify_kernel.setArg( 0, *m_density_buffer );
@@ -343,12 +401,9 @@ struct ocl_t
       m_queue.enqueueNDRangeKernel( classify_kernel, cl::NullRange, cl::NDRange( units ) );
 
       int result = 0;
-      m_queue.enqueueReadBuffer( *tempBuffer, CL_TRUE, 0, rn*sizeof( cl_int4_t ), r );
+      m_queue.enqueueReadBuffer( *tempBuffer, CL_TRUE, 0, rn * sizeof( cl_int4_t ), r );
 
    }
-
- 
-
 
    bool IsPowerOfTwo( int n )
    {
@@ -395,7 +450,7 @@ struct ocl_t
          if( group_count > 1 )
          {
             size_t buffer_size = group_count * sizeof( int );
-            auto level_buffer = boost::make_shared<cl::Buffer>( *context, CL_MEM_READ_WRITE, buffer_size );
+            auto level_buffer = boost::make_shared< cl::Buffer >( *context, CL_MEM_READ_WRITE, buffer_size );
             m_scanPartialSums.push_back( level_buffer );
             //ScanPartialSums[level++] = clCreateBuffer(ComputeContext, CL_MEM_READ_WRITE, buffer_size, NULL, NULL);
          }

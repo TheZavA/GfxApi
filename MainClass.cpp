@@ -1,4 +1,3 @@
-
 #include "MainClass.h"
 
 #include "GfxApi.h"
@@ -13,13 +12,10 @@
 
 #include "Input.h"
 
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
-#include <btBulletDynamicsCommon.h>
 
 #include <math.h>
 #include <minmax.h>
+
 
 
 
@@ -241,10 +237,8 @@ void MainClass::updateCamera( float deltaTime )
    m_camera.up = rotHorizontal * ( rotVertical * float3( 0, 1, 0 ) );
    m_camera.front = rotHorizontal * ( rotVertical * float3( 0, 0, 1 ) );
 
-
    m_camera.up.Normalize();
    m_camera.front.Normalize();
-
    
 }
 
@@ -254,12 +248,12 @@ void MainClass::mainLoop()
 
    m_pChunkManager = boost::make_shared<ChunkManager>( m_camera );
 
-   std::vector<float3> out_vertices;
-   std::vector<float2> out_uvs;
-   std::vector<float3> out_normals;
+   std::vector< float3 > out_vertices;
+   std::vector< float2 > out_uvs;
+   std::vector< float3 > out_normals;
 
-   std::vector<int> m_Entries;
-   std::vector<int> m_Textures;
+   std::vector< int > m_Entries;
+   std::vector< int > m_Textures;
 
    while( !m_exiting )
    {
@@ -394,43 +388,10 @@ void MainClass::onTick()
 
    //printf("%f, %f, %f \n", m_camera.pos.x, m_camera.pos.y, m_camera.pos.z);
 
+   auto ident = float4x4( Quat::identity, float3( 0, 0, 0 ) );
+   
+
    for( auto& visible : m_pChunkManager->m_visibles )
-   {
-      if( !visible )
-         continue;
-
-      if( visible->m_pMesh )
-      {
-         if( !m_camera.Intersects( visible->m_chunk_bounds ) )
-            continue;
-
-            m_pChunkManager->m_shaders[0]->Use();
-            m_pChunkManager->m_shaders[0]->SetUniform( m_camera.ViewProjMatrix(), "worldViewProj" );
-            m_pChunkManager->m_shaders[0]->SetUniform( m_camera.pos.x, m_camera.pos.y, m_camera.pos.z, "cameraPos" );
-
-     
-
-         double scale = ( 1.0f / ChunkManager::CHUNK_SIZE ) * ( visible->m_chunk_bounds.MaxX() - visible->m_chunk_bounds.MinX() );
-
-
-         auto xForm = float4x4::FromTRS( float3( visible->m_chunk_bounds.MinX(), visible->m_chunk_bounds.MinY(), visible->m_chunk_bounds.MinZ() ),
-                                         float4x4( Quat::identity, float3( 0, 0, 0 ) ),
-                                         float3( scale, scale, scale ) );
-
-         visible->m_pMesh->Bind();
-
-         visible->m_pMesh->sp->SetUniform( xForm, "world" );
-        // visible->m_pMesh->sp->SetUniform( visible->m_scale, "res" );
-
-         visible->m_pMesh->Draw();
-
-         visible->m_pMesh->UnBind();
-      }
-
-   }
-
-
-   for( auto& visible : m_pChunkManager->m_visiblesTemp )
    {
       if( !visible )
          continue;
@@ -445,21 +406,52 @@ void MainClass::onTick()
          m_pChunkManager->m_shaders[0]->SetUniform( m_camera.pos.x, m_camera.pos.y, m_camera.pos.z, "cameraPos" );
 
          double scale = ( 1.0f / ChunkManager::CHUNK_SIZE ) * ( visible->m_chunk_bounds.MaxX() - visible->m_chunk_bounds.MinX() );
-
+         auto scale3 = float3( scale, scale, scale );
 
          auto xForm = float4x4::FromTRS( float3( visible->m_chunk_bounds.MinX(), visible->m_chunk_bounds.MinY(), visible->m_chunk_bounds.MinZ() ),
-                                         float4x4( Quat::identity, float3( 0, 0, 0 ) ),
-                                         float3( scale, scale, scale ) );
+                                         ident, scale3 );
 
          visible->m_pMesh->Bind();
 
          visible->m_pMesh->sp->SetUniform( xForm, "world" );
-         //visible->m_pMesh->sp->SetUniform( visible->m_scale, "res" );
+        // visible->m_pMesh->sp->SetUniform( visible->m_scale, "res" );
 
          visible->m_pMesh->Draw();
 
          visible->m_pMesh->UnBind();
       }
+
+   }
+
+
+
+   for( auto& visible : m_pChunkManager->m_visiblesTemp )
+   {
+      if( !visible || !visible->m_pMesh )
+         continue;
+
+      //if( !m_camera.Intersects( visible->m_chunk_bounds ) )
+      //   continue;
+
+      m_pChunkManager->m_shaders[0]->Use();
+      m_pChunkManager->m_shaders[0]->SetUniform( m_camera.ViewProjMatrix(), "worldViewProj" );
+      m_pChunkManager->m_shaders[0]->SetUniform( m_camera.pos.x, m_camera.pos.y, m_camera.pos.z, "cameraPos" );
+
+      double scale = ( 1.0f / ChunkManager::CHUNK_SIZE ) * ( visible->m_chunk_bounds.MaxX() - visible->m_chunk_bounds.MinX() );
+      auto scale3 = float3( scale, scale, scale );
+
+      auto xForm = float4x4::FromTRS( float3( visible->m_chunk_bounds.MinX(), visible->m_chunk_bounds.MinY(), visible->m_chunk_bounds.MinZ() ),
+                                      ident, scale3 );
+
+      visible->m_pMesh->Bind();
+
+      visible->m_pMesh->sp->SetUniform( xForm, "world" );
+      //visible->m_pMesh->sp->SetUniform( visible->m_scale, "res" );
+
+      visible->m_pMesh->Draw();
+
+      visible->m_pMesh->UnBind();
+      
 
    }
 

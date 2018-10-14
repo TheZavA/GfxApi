@@ -1326,18 +1326,42 @@ float sphereFunction(float4 pos)
 
 float densities3d(float3 pos, uchar level)
 {
-    
-   //return pos.y < 400 ? -1 : 1;
-   //return sphereFunction((float4)(pos.x, pos.y, pos.z, 0.0f)) - 200000335.f ;
-   float3 mod_pos = pos * 0.001f;
+
+   //return sphereFunction((float4)(pos.x, pos.y, pos.z, 0.0f)) - 111200000335.f ;
+   float3 mod_pos = pos * 0.04f;
+   return fBM( ( float2 )( pos.x, pos.z ), 0.0001f, 2.12f, 10 ) * ridgedmultifractal3d( ( float4 )( mod_pos.x, mod_pos.y, mod_pos.z, 0 ), 0.003f, 2.19f, 0, 6 ) - pos.y / 4600;
+  // return pos.y < 400 ? -1 : 1;
+
+   
    //level = 14;
 	     
-   float mask = clamp(fBM((float2)(pos.x, pos.z), 0.00001f, 2.12f, 9), 0.0f, 1.0f);
-   float mask2 = clamp(fBM((float2)(pos.x + 80000, pos.z), 0.00004f, 2.12f, 9), 0.0f, 1.0f);
+   float mask = clamp(fBM((float2)(pos.x, pos.z), 0.00001f, 2.12f, 11), 0.0f, 1.0f);
+   float mask2 = clamp(fBM((float2)(pos.x + 80000, pos.z), 0.00004f, 2.12f, 13), 0.0f, 1.0f);
 
-   float baseMountain = fBM((float2)(mod_pos.x - 2000, mod_pos.z), 0.016f, 2.19f, min((int)(level), 3));
-   float billow = fBM((float2)(mod_pos.x - 4000, mod_pos.z), 0.009f, 2.19f,  min((int)(level), 5));
-   float detail = fabs(ridgedmultifractal2d((float2)(mod_pos.x - 14000, mod_pos.z - 8000), 0.045, 2.233, 0, min((int)(level), 9)));
+
+   //float baseMountain = fBM( ( float2 )( mod_pos.x - 2000, mod_pos.z ), 0.016f, 2.19f, min( ( int ) ( level ), 3 ) );
+
+   float3 testPos = ( float3 )( fBM( ( float2 )( mod_pos.x, mod_pos.z ), 0.016f, 2.19f, min( ( int ) ( level ), 4 ) ),
+                                fBM( ( float2 )( mod_pos.x - 1000, mod_pos.z + 600 ), 0.016f, 2.19f, min( ( int ) ( level ), 4 ) ),
+                                fBM( ( float2 )( mod_pos.x - 200, mod_pos.z + 2000 ), 0.016f, 2.19f, min( ( int ) ( level ), 4 ) ) );
+
+   float baseMountain = fBM( ( float2 )( mod_pos.x + testPos.x*4, mod_pos.z + testPos.z *4 ), 0.016f, 2.19f, min( ( int ) ( level ), 8 ) );
+
+   //float billow = fBM((float2)(mod_pos.x - 4000, mod_pos.z), 0.009f, 2.19f,  min((int)(level), 7));
+
+   //float billow = fBM( ( float2 )( mod_pos.x - 4000, mod_pos.z ), 0.009f, 2.19f, min( ( int ) ( level ), 7 ) );
+
+   float2 testPos3 = ( float2 )( fBM( ( float2 )( mod_pos.x, mod_pos.z ), 0.009f, 2.19f, min( ( int ) ( level ), 7 ) ),
+                                 fBM( ( float2 )( mod_pos.x - 2000, mod_pos.z+2123 ), 0.009f, 2.19f, min( ( int ) ( level ), 7 ) ) );
+
+   float billow = fBM( ( float2 )( mod_pos.x + testPos3.x, mod_pos.z + testPos3.y ), 0.009f, 2.19f, min( ( int ) ( level ), 7 ) );
+
+   //float detail = fabs(ridgedmultifractal2d((float2)(mod_pos.x - 14000, mod_pos.z - 8000), 0.045, 2.233, 0, min((int)(level), 9)));
+
+   float2 testPos2 = ( float2 )( fabs( ridgedmultifractal2d( ( float2 )( mod_pos.x * 0.5, mod_pos.z * 0.5 ), 0.045, 2.233, 0, min( ( int ) ( level ), 13 ) ) ),
+                                 fabs( ridgedmultifractal2d( ( float2 )( mod_pos.x * 0.5 + 10, mod_pos.z * 0.5 - 10 ), 0.045, 2.233, 0, min( ( int ) ( level ), 13 ) ) ) );
+
+   float detail = fabs( ridgedmultifractal2d( ( float2 )( mod_pos.x * 0.5f + testPos2.x*4, mod_pos.z*0.5f + testPos2.y*4 ), 0.045, 2.233, 0, min( ( int ) ( level ), 13 ) ) );
 
    if( pos.y > 900 )
    {

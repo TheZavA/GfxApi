@@ -3,6 +3,7 @@
 in vec3 pos;
 in vec4 world_pos;
 in float ao;
+in float gao;
 in vec3 normal;
 
 uniform float res;
@@ -26,7 +27,7 @@ vec3 applyFog2( in vec3  rgb,     // original color of the pixel
                in float distance, // camera to point distance
                in vec3  rayDir)   // camera to point vector
 {
-	float b =  0.000010;
+	float b =  0.000005;
     float fogAmount = 1.0 - exp( -distance*b );
 	//float fogAmount = 0.8 * exp(-cameraPos.y*b) * (1.0-exp( -distance*rayDir.y*b ))/rayDir.y;
     float sunAmount = max( dot( rayDir, vec3(0.6, 0.4, 0.2) ), 0.0 );
@@ -77,7 +78,7 @@ void main ()
    float intensity = clamp( dot( n1, vec3(0.4, 0.8, 0.2)), 0, 1 );
    //frag_colour = vec4(0.8,0.8,0.8,0) * (intensity * 2);
    //frag_colour = vec4(ao,ao,ao,0);
-   frag_colour = (vec4(0.8,0.8,0.8,0) * (intensity) + vec4(0.4,0.4,0.4,0) ) * ao;
+   frag_colour = (vec4(0.8,0.8,0.8,0) * (intensity) + vec4(0.4,0.4,0.4,0) ) * ao * gao;
 
    //vec3 color =  applyFog3( vec3(frag_colour.rgb ) ,
 	//					distance(cameraPos, world_pos.xyz),

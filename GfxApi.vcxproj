@@ -1,13 +1,21 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -20,13 +28,26 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -36,7 +57,13 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
@@ -46,12 +73,40 @@
     <ReferencePath>$(ReferencePath)</ReferencePath>
     <LibraryPath>E:\OpenGLProjects\lib\bullet3-2.83.5\lib\Release;E:\OpenGLProjects\lib\assimp\lib32;E:\OpenGLProjects\OpenGI\lib;E:\cuda_toolkit7\lib\Win32;E:\OpenGLProjects\lib\glew-1.9.0\lib\Release\Win32;E:\OpenGLProjects\lib\glfw-2.7.7\lib-msvc110;E:\OpenGLProjects\lib\mgl\mgl\Debug;H:\kram von desktop\boost_1_55_0\stage\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <IncludePath>E:\OpenGLProjects\lib\bullet3-2.83.5\src;E:\OpenGLProjects\lib\assimp\include;E:\OpenGLProjects\OpenGI\include;E:\cuda_toolkit7\include;E:\OpenGLProjects\lib;F:\OglProject\GfxApi\tinyxml2;F:\OglProject\GfxApi\noisepp\threadpp;F:\OglProject\GfxApi\noisepp\core;E:\OpenGLProjects\lib\glew-1.9.0\include;E:\OpenGLProjects\lib\glfw-2.7.7\include;H:\kram von desktop\boost_1_55_0;$(IncludePath)</IncludePath>
+    <ReferencePath>$(ReferencePath)</ReferencePath>
+    <LibraryPath>E:\OpenGLProjects\lib\bullet3-2.83.5\lib\Release;E:\OpenGLProjects\lib\assimp\lib32;E:\OpenGLProjects\OpenGI\lib;E:\cuda_toolkit7\lib\Win32;E:\OpenGLProjects\lib\glew-1.9.0\lib\Release\Win32;E:\OpenGLProjects\lib\glfw-2.7.7\lib-msvc110;E:\OpenGLProjects\lib\mgl\mgl\Debug;H:\kram von desktop\boost_1_55_0\stage\lib;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>E:\OpenGLProjects\lib\bullet3-2.83.5\src;E:\OpenGLProjects\lib\assimp\include;E:\OpenGLProjects\OpenGI\include;E:\cuda_toolkit7\include;E:\OpenGLProjects\lib;F:\OglProject\GfxApi\tinyxml2;F:\OglProject\GfxApi\noisepp\threadpp;F:\OglProject\GfxApi\noisepp\core;E:\OpenGLProjects\lib\glew-1.9.0\include;E:\OpenGLProjects\lib\glfw-2.7.7\include;H:\kram von desktop\boost_1_55_0;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(IncludePath)</IncludePath>
-    <LibraryPath>E:\OpenGLProjects\lib\bullet3-2.83.5\lib\Release;E:\OpenGLProjects\lib\assimp\lib32;E:\OpenGLProjects\OpenGI\lib;E:\cuda_toolkit7\lib\Win32;E:\OpenGLProjects\lib\glew-1.9.0\lib\Release\Win32;E:\OpenGLProjects\lib\glfw-2.7.7\lib-msvc110;E:\OpenGLProjects\lib\mgl\mgl\Release;H:\kram von desktop\boost_1_55_0\stage\lib;$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSDK_LibraryPath_x86)</LibraryPath>
+    <IncludePath>C:\Program Files (x86)\Windows Kits\10\Include\10.0.10586.0\um;D:\OpenGLProjects\lib\bullet3-2.83.5\src;d:\OpenGLProjects\lib\assimp\include;d:\OpenGLProjects\OpenGI\include;d:\cuda_toolkit7\include;d:\OpenGLProjects\lib;f:\OglProject\GfxApi\tinyxml2;F:\OglProject\GfxApi\noisepp\threadpp;F:\OglProject\GfxApi\noisepp\core;d:\OpenGLProjects\lib\glew-1.9.0\include;d:\OpenGLProjects\lib\glfw-2.7.7\include;g:\Old_H\kram von desktop\boost_1_55_0;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(IncludePath)</IncludePath>
+    <LibraryPath>d:\OpenGLProjects\lib\bullet3-2.83.5\lib\Release;d:\OpenGLProjects\lib\assimp\lib32;d:\OpenGLProjects\OpenGI\lib;d:\cuda_toolkit7\lib\Win32;d:\OpenGLProjects\lib\glew-1.9.0\lib\Release\Win32;d:\OpenGLProjects\lib\glfw-2.7.7\lib-msvc110;d:\OpenGLProjects\lib\mgl\mgl\Release;g:\Old_H\kram von desktop\boost_1_55_0\stage\lib;$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSDK_LibraryPath_x86);C:\Program Files (x86)\Windows Kits\10\Lib\10.0.10240.0\um\x86</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <IncludePath>d:\cuda_toolkit9\include;d:\OpenGLProjects\lib;f:\OglProject\GfxApi\tinyxml2;F:\OglProject\GfxApi\noisepp\threadpp;F:\OglProject\GfxApi\noisepp\core;d:\OpenGLProjects\lib\glew-1.9.0\include;D:\OpenGLProjects\lib\glfw-3.2.1\include;g:\boost_64;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(IncludePath)</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x64);D:\cuda_toolkit9\lib\x64;D:\OpenGLProjects\lib\glew-1.9.0\lib\Release\x64;D:\OpenGLProjects\lib\glfw-3.2.1\lib-vc2012;D:\OpenGLProjects\lib\mgl\mgl\x64\Release\;g:\boost_64\lib64-msvc-12.0;$(VCInstallDir)lib\amd64;$(VCInstallDir)atlmfc\lib\amd64;$(WindowsSDK_LibraryPath_x64);C:\Program Files (x86)\Windows Kits\10\Lib\10.0.10240.0\um\x64</LibraryPath>
+    <ExcludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(MSBuild_ExecutablePath);</ExcludePath>
+    <OutDir>.</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;GLEW_STATIC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);NOMINMAX;MATH_ENABLE_UNCOMMON_OPERATIONS</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>OpenCL.lib;mgl.lib;glfw3.lib;glew32s.lib;opengl32.lib;glu32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PrecompiledHeader>
       </PrecompiledHeader>
@@ -74,6 +129,27 @@
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);NOMINMAX;MATH_ENABLE_UNCOMMON_OPERATIONS</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>OpenCL.lib;mgl.lib;glfw3.lib;glew32s.lib;glew32.lib;glu32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <Profile>true</Profile>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>Full</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN64;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);NOMINMAX;MATH_ENABLE_UNCOMMON_OPERATIONS</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
@@ -82,9 +158,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>OpenCL.lib;mgl.lib;glfw3.lib;glew32s.lib;glew32.lib;opengl32.lib;glu32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>mgl.lib;glfw3.lib;glew32s.lib;glew32.lib;glu32.lib;kernel32.lib;user32.lib;gdi32.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <Profile>true</Profile>
-      <TargetMachine>MachineX86</TargetMachine>
+      <OutputFile>D:\OpenGLProjects\GfxApi - Copy - Copy\GfxApi.exe</OutputFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -121,6 +197,10 @@
     <None Include="scan_kernel.cl" />
     <None Include="shader\chunk.ps" />
     <None Include="shader\chunk.vs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="..\..\cuda_toolkit9\lib\x64\OpenCL.lib" />
+    <Library Include="C:\Program Files (x86)\Windows Kits\10\Lib\10.0.10240.0\um\x64\OpenGL32.Lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

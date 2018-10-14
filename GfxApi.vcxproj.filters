@@ -102,4 +102,8 @@
       <Filter>cl_programs</Filter>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <Library Include="C:\Program Files (x86)\Windows Kits\10\Lib\10.0.10240.0\um\x64\OpenGL32.Lib" />
+    <Library Include="..\..\cuda_toolkit9\lib\x64\OpenCL.lib" />
+  </ItemGroup>
 </Project>

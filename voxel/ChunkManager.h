@@ -27,13 +27,13 @@ public:
    ChunkManager( Frustum& camera );
    ~ChunkManager( void );
 
-   static const int CHUNK_SIZE = 64;
+   static const int CHUNK_SIZE = 32;
    static const int MAX_LOD_LEVEL = 11;
 
    static const int WORLD_BOUNDS_MIN_XZ = -512000;
    static const int WORLD_BOUNDS_MIN_Y = -512000;
    static const int WORLD_BOUNDS_MAX_XZ = 512000;
-   static const int WORLD_BOUNDS_MAX_Y = 512000 ;
+   static const int WORLD_BOUNDS_MAX_Y = 512000;
 
    typedef TOctree< boost::shared_ptr< NodeChunk > > ChunkTree;
 
@@ -59,8 +59,8 @@ public:
    /// chunks pending generation or in generation process
    uint32_t m_chunks_pending;
 
-   void initTree( boost::shared_ptr<ChunkTree> pChild );
-   void initTreeNoQueue( boost::shared_ptr<ChunkTree> pChild );
+   void initTree( boost::shared_ptr< ChunkTree > pChild );
+   void initTreeNoQueue( boost::shared_ptr< ChunkTree > pChild );
 
    boost::shared_ptr< ocl_t > m_ocl;
 
@@ -73,7 +73,6 @@ public:
    bool isAcceptablePixelError( float3& cameraPos, ChunkTree& tree );
 
    void updateLoDTree2( Frustum& camera );
-
 
    TQueueLocked<boost::shared_ptr< NodeChunk > > m_nodeChunkClassifyQueue;
 

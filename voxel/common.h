@@ -63,12 +63,15 @@ typedef struct cl_vertex
       px = ( uint8_t ) x;
       py = ( uint8_t ) y;
       pz = ( uint8_t ) z;
+      globalAO = 255;
+      localAO = 255;
    }
 
    uint8_t px;
    uint8_t py;
    uint8_t pz;
    uint8_t localAO;
+   uint8_t globalAO;
 
 } cl_vertex_t;
 

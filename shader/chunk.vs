@@ -5,10 +5,12 @@ uniform mat4 worldViewProj;
 
 in ivec3 vertex_position;
 in int vertex_ao;
+in int vertex_gao;
 
 out vec3 pos;
 out vec4 world_pos;
 out float ao;
+out float gao;
 
 out vec3 normal;
 
@@ -18,4 +20,5 @@ void main ()
 	world_pos = world * vec4 (vertex_position, 1.0);
 	pos = vertex_position;
    ao = float(vertex_ao)/255;
+   gao = float(vertex_gao)/255;
 }

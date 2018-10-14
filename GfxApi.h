@@ -26,17 +26,18 @@ namespace GfxApi {
 
 	void initializeGlew();
 
-	int checkOglError(const char *file, int line);
+	int checkOglError( const char *file, int line );
 
-
-	enum class Access {
+	enum class Access 
+   {
 		READ_ONLY,
 		WRITE_ONLY,
 		READ_WRITE
 	};
 
 
-	enum class Usage {
+	enum class Usage 
+   {
 		STREAM_DRAW,
 		STREAM_READ,
 		STREAM_COPY,
@@ -115,7 +116,8 @@ namespace GfxApi {
 		TextureCubeMapArray
 	};
 
-	enum class TextureAddressMode {
+	enum class TextureAddressMode 
+   {
 		TextureAddressWrap,
 		TextureAddressMirrorWrap,
 		TextureAddressEdgeClamp,
@@ -123,7 +125,8 @@ namespace GfxApi {
 		TextureAddressBorderClamp
 	};
 
-	enum class TextureFilterMode {
+	enum class TextureFilterMode 
+   {
 		Nearest,
 		Linear,
 		NearestMipmapNearest,
@@ -137,7 +140,8 @@ namespace GfxApi {
 	*
 	* Section describing the @c type parameter.
 	*/
-	enum class TextureElementType {
+	enum class TextureElementType 
+   {
 		UNSIGNED_BYTE,
 		BYTE,
 		UNSIGNED_SHORT,
@@ -160,7 +164,8 @@ namespace GfxApi {
 	};
 
 	///https://www.opengl.org/sdk/docs/man/html/glTexImage2D.xhtml see the section on the @c format parameter
-	enum class TexturePixelFormat {
+	enum class TexturePixelFormat 
+   {
 		RED,
 		RG,
 		RGB,
@@ -179,7 +184,8 @@ namespace GfxApi {
 	};
 
 	///https://www.opengl.org/sdk/docs/man/html/glTexImage2D.xhtml see the section on the @c internalFormat parameter
-	enum class TextureInternalFormat {
+	enum class TextureInternalFormat 
+   {
 		DEPTH_COMPONENT,
 		DEPTH_STENCIL,
 		RED,

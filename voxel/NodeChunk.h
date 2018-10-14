@@ -40,7 +40,7 @@ public:
    std::unordered_map< uint32_t, int16_t > m_vertexToIndex;
 
    boost::shared_ptr< TOctree< boost::shared_ptr< NodeChunk > > > m_pTree;
-   boost::shared_ptr< std::vector<cl_block_info_t> > m_compactedBlocks;
+   boost::shared_ptr< std::vector< cl_block_info_t > > m_compactedBlocks;
 
    NodeChunk( float scale, const AABB& bounds, ChunkManager* pChunkManager, bool hasNodes = false );
 
@@ -53,6 +53,7 @@ public:
    void generateLocalAO();
 
    void classifyBlocks();
+   void classifyChunk();
 
    uint16_t getOrCreateVertex( uint8_t x, uint8_t y, uint8_t z );
 
